@@ -123,6 +123,20 @@ class ReaderViewModel(
         if (target != s.pageIndex) goToPage(target, targetSlot = 0)
     }
 
+    /** Returns the cached bitmap for [page] if already decoded in memory, or null. */
+    fun getCachedPageBitmap(page: Int): Bitmap? = pageLoader?.getCachedPage(page)
+
+    /** Decodes (or returns cached) bitmap for [page] for the horizontal pager. */
+    suspend fun loadPageBitmap(page: Int): Bitmap? =
+        runCatching { pageLoader?.loadPage(page) }.getOrNull()
+
+    /** Syncs ViewModel state when the horizontal pager settles on [page]. */
+    fun onPageSettled(page: Int) {
+        val s = _state.value
+        if (page < 0 || page >= s.pageCount || page == s.pageIndex) return
+        goToPage(page, targetSlot = 0)
+    }
+
     fun toggleReadingDirection() {
         rightToLeft = !rightToLeft
         panelCache.clear()
@@ -140,10 +154,50 @@ class ReaderViewModel(
     private fun goToPage(page: Int, targetSlot: Int) {
         val loader = pageLoader ?: return
         navJob?.cancel()
+        val cachedPage = loader.getCachedPage(page)
+        val cachedPanels = panelCache[page]
+        if (cachedPage != null) {
+            val panels = cachedPanels ?: listOf(Panel.FULL_PAGE)
+            val resolvedSlot = when (targetSlot) {
+                ENTER_AT_OUTRO -> panels.size + 1
+                else -> targetSlot.coerceIn(0, panels.size + 1)
+            }
+            _state.update {
+                it.copy(
+                    loading = false,
+                    detecting = cachedPanels == null,
+                    pageIndex = page,
+                    page = cachedPage,
+                    panels = panels,
+                    slot = resolvedSlot,
+                    error = null,
+                )
+            }
+        }
         navJob = viewModelScope.launch {
-            _state.update { it.copy(loading = it.page == null, detecting = true, error = null) }
+            if (cachedPage == null) {
+                _state.update { it.copy(loading = it.page == null, detecting = true, error = null) }
+            }
             try {
-                val bitmap = loader.loadPage(page)
+                val bitmap = cachedPage ?: loader.loadPage(page)
+                if (cachedPage == null) {
+                    val initialPanels = cachedPanels ?: listOf(Panel.FULL_PAGE)
+                    val initialSlot = when (targetSlot) {
+                        ENTER_AT_OUTRO -> initialPanels.size + 1
+                        else -> targetSlot.coerceIn(0, initialPanels.size + 1)
+                    }
+                    _state.update {
+                        it.copy(
+                            loading = false,
+                            detecting = cachedPanels == null,
+                            pageIndex = page,
+                            page = bitmap,
+                            panels = initialPanels,
+                            slot = initialSlot,
+                            error = null,
+                        )
+                    }
+                }
                 val panels = panelsFor(page, bitmap)
                 val resolvedSlot = when (targetSlot) {
                     ENTER_AT_OUTRO -> panels.size + 1
@@ -162,6 +216,7 @@ class ReaderViewModel(
                 }
                 persistProgress()
                 prefetch(page + 1)
+                if (page > 0) prefetch(page - 1)
             } catch (t: Throwable) {
                 _state.update {
                     it.copy(loading = false, detecting = false, error = "Failed to load page ${page + 1}: ${t.message}")

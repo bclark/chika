@@ -36,4 +36,13 @@ class ComicReaderApp : Application() {
         settings.amoledTheme = enabled
         _amoledTheme.value = enabled
     }
+
+    /** Process-wide reactive flag for side-by-side horizontal page sliding vs classic swipe-to-turn. */
+    private val _pageSlideEnabled by lazy { MutableStateFlow(settings.pageSlideEnabled) }
+    val pageSlideEnabled: StateFlow<Boolean> by lazy { _pageSlideEnabled.asStateFlow() }
+
+    fun setPageSlideEnabled(enabled: Boolean) {
+        settings.pageSlideEnabled = enabled
+        _pageSlideEnabled.value = enabled
+    }
 }

@@ -21,6 +21,11 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_AMOLED, false)
         set(value) { prefs.edit().putBoolean(KEY_AMOLED, value).apply() }
 
+    /** When true, horizontal drag slides adjacent pages side-by-side instead of classic swipe-to-turn. */
+    var pageSlideEnabled: Boolean
+        get() = prefs.getBoolean(KEY_PAGE_SLIDE, true)
+        set(value) { prefs.edit().putBoolean(KEY_PAGE_SLIDE, value).apply() }
+
     var smbHost: String
         get() = prefs.getString(KEY_SMB_HOST, "") ?: ""
         set(value) { prefs.edit().putString(KEY_SMB_HOST, value.trim()).apply() }
@@ -43,6 +48,7 @@ class AppSettings(context: Context) {
     private companion object {
         const val KEY_DEFAULT_RTL = "default_rtl"
         const val KEY_AMOLED = "amoled_theme"
+        const val KEY_PAGE_SLIDE = "page_slide_enabled"
         const val KEY_SMB_HOST = "smb_host"
         const val KEY_SMB_SHARE = "smb_share"
         const val KEY_SMB_USER = "smb_user"
