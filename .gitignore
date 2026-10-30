@@ -23,6 +23,8 @@ local.properties
 
 # Local release artifacts (built by Android Studio / gradle)
 /app/release/
+*.apk
+*.aab
 
 # ML training artifacts (scripts are committed; data/weights are not)
 training/data/
