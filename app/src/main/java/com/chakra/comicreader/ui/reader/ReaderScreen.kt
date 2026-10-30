@@ -386,8 +386,8 @@ private fun PageViewer(
                             pendingTap = scope.launch {
                                 delay(DOUBLE_TAP_WINDOW_MS)
                                 when {
-                                    tapX < w / 3f -> onPrev()
-                                    tapX > w * 2f / 3f -> onNext()
+                                    tapX < w / 3f -> onPrevPage()
+                                    tapX > w * 2f / 3f -> onNextPage()
                                     else -> onToggleChrome()
                                 }
                                 pendingTap = null

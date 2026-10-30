@@ -351,12 +351,12 @@ struct ReaderView: View {
         .onChange(of: page) { if !scrubbing { scrub = Double($0) } }
     }
 
-    // Tap zones, matching Android: left third steps back, right third steps forward (panels are
-    // pre-ordered in reading direction, so this is RTL-agnostic), middle third toggles chrome. The
-    // double-tap (show whole page) is disambiguated natively by the UIKit tap recognizers, so no defer.
+    // Tap zones, matching Android: left third turns a page back, right third turns a page forward,
+    // middle third toggles chrome. The double-tap (show whole page) is disambiguated natively by
+    // the UIKit tap recognizers, so no defer.
     private func tapZone(x: CGFloat, width: CGFloat, in loader: PageLoader) {
-        if x < width / 3 { advance(by: -1, in: loader) }
-        else if x > width * 2 / 3 { advance(by: 1, in: loader) }
+        if x < width / 3 { turnPage(next: false, in: loader) }
+        else if x > width * 2 / 3 { turnPage(next: true, in: loader) }
         else { withAnimation { showChrome.toggle() } }
     }
 
