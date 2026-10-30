@@ -152,7 +152,7 @@ struct LibraryView: View {
     private var content: some View {
         ScrollView {
             if library.comics.isEmpty {
-                Text("No comics yet. Tap LOAD COMIC to add a CBZ or CBR.")
+                Text("No comics yet. Tap LOAD COMIC to add a CBZ, CBR, or PDF.")
                     .font(.archivo(13)).foregroundColor(Chika.creamMuted)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 18).padding(.vertical, 12)

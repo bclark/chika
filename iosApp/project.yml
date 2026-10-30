@@ -74,6 +74,7 @@ targets:
               - com.chakra.comicreader.cbz
               - com.chakra.comicreader.cbr
               - public.zip-archive
+              - com.adobe.pdf
         # Exported (not Imported): the app OWNS these types, so the system knows .cbz is a zip and
         # .cbr a data file — otherwise the file importer greys these files out as unselectable.
         UTExportedTypeDeclarations:

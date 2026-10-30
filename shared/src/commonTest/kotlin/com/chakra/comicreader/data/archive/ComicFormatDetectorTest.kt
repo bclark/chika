@@ -12,6 +12,7 @@ class ComicFormatDetectorTest {
 
     private val zipMagic = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
     private val rarMagic = byteArrayOf(0x52, 0x61, 0x72, 0x21, 0x1A, 0x07)
+    private val pdfMagic = byteArrayOf(0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37)
 
     @Test
     fun zipMagicIsCbz() {
@@ -21,6 +22,12 @@ class ComicFormatDetectorTest {
     @Test
     fun rarMagicIsCbr() {
         assertEquals(ComicFormat.CBR, ComicFormatDetector.detect(rarMagic, "cbr"))
+    }
+
+    @Test
+    fun pdfMagicIsPdf() {
+        assertEquals(ComicFormat.PDF, ComicFormatDetector.detect(pdfMagic, "pdf"))
+        assertEquals(ComicFormat.PDF, ComicFormatDetector.detect(pdfMagic, "cbz"))
     }
 
     @Test
@@ -41,7 +48,9 @@ class ComicFormatDetectorTest {
         assertEquals(ComicFormat.CBR, ComicFormatDetector.detect(junk, "rar"))
         assertEquals(ComicFormat.CBZ, ComicFormatDetector.detect(junk, "zip"))
         assertEquals(ComicFormat.CBZ, ComicFormatDetector.detect(junk, "CBZ")) // case-insensitive
-        assertEquals(ComicFormat.UNKNOWN, ComicFormatDetector.detect(junk, "pdf"))
+        assertEquals(ComicFormat.PDF, ComicFormatDetector.detect(junk, "pdf"))
+        assertEquals(ComicFormat.PDF, ComicFormatDetector.detect(junk, "PDF"))
+        assertEquals(ComicFormat.UNKNOWN, ComicFormatDetector.detect(junk, "txt"))
     }
 
     @Test

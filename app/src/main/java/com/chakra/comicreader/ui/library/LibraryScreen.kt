@@ -185,7 +185,7 @@ fun LibraryScreen(
             if (comics.isEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
-                        "No comics yet. Tap LOAD COMIC to add a CBZ or CBR.",
+                        "No comics yet. Tap LOAD COMIC to add a CBZ, CBR, or PDF.",
                         fontFamily = Archivo,
                         fontSize = 13.sp,
                         color = CreamMuted,

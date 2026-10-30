@@ -1,28 +1,65 @@
 import Foundation
+import PDFKit
+import UIKit
 import ZIPFoundation
 import ChikaShared
 
-/// iOS CBZ implementation of the comic-archive contract. Entry filtering (isImageEntry) and page
+/// iOS comic container implementation (CBZ/ZIP and PDF). Entry filtering (isImageEntry) and page
 /// ordering (NaturalOrderComparator) come from the shared Kotlin core so iOS and Android agree on
 /// what counts as a page and in which order pages are read.
 final class CbzArchive {
-    private let archive: Archive
-    private let entries: [Entry]
-
-    init(url: URL) throws {
-        archive = try Archive(url: url, accessMode: .read)
-        entries = archive
-            .filter { $0.type == .file && ComicArchiveKt.isImageEntry(name: $0.path) }
-            .sorted { NaturalOrderComparator.shared.compare(a: $0.path, b: $1.path) < 0 }
+    private enum Backend {
+        case zip(Archive, [Entry])
+        case pdf(PDFDocument)
     }
 
-    var pageCount: Int { entries.count }
+    private let backend: Backend
 
-    func pageName(_ index: Int) -> String { entries[index].path }
+    init(url: URL) throws {
+        if url.pathExtension.lowercased() == "pdf" {
+            guard let doc = PDFDocument(url: url) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            backend = .pdf(doc)
+        } else {
+            let archive = try Archive(url: url, accessMode: .read)
+            let entries = archive
+                .filter { $0.type == .file && ComicArchiveKt.isImageEntry(name: $0.path) }
+                .sorted { NaturalOrderComparator.shared.compare(a: $0.path, b: $1.path) < 0 }
+            backend = .zip(archive, entries)
+        }
+    }
+
+    var pageCount: Int {
+        switch backend {
+        case .zip(_, let entries): return entries.count
+        case .pdf(let doc): return doc.pageCount
+        }
+    }
+
+    func pageName(_ index: Int) -> String {
+        switch backend {
+        case .zip(_, let entries): return entries[index].path
+        case .pdf: return "page_\(index + 1).jpg"
+        }
+    }
 
     func readPage(_ index: Int) throws -> Data {
-        var data = Data()
-        _ = try archive.extract(entries[index], skipCRC32: true) { data.append($0) }
-        return data
+        switch backend {
+        case .zip(let archive, let entries):
+            var data = Data()
+            _ = try archive.extract(entries[index], skipCRC32: true) { data.append($0) }
+            return data
+        case .pdf(let doc):
+            guard let page = doc.page(at: index) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            let maxDim = CGFloat(PageConstants.shared.maxPageDimension)
+            let img = page.thumbnail(of: CGSize(width: maxDim, height: maxDim), for: .mediaBox)
+            guard let data = img.jpegData(compressionQuality: 0.92) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return data
+        }
     }
 }
