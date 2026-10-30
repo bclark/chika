@@ -23,6 +23,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ComicBookReader"
+rootProject.name = "Leaf"
 include(":app")
 include(":shared")
