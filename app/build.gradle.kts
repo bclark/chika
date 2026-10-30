@@ -19,7 +19,7 @@ android {
         // reproducible and monotonically increasing across all channels (Play, F-Droid, sideload)
         // — F-Droid builds from source and requires a stable, increasing versionCode. A pre-release
         // suffix is ignored per component (e.g. "0.2.1-beta" → 0.2.1 → 20100... → 201).
-        val appVersionName = System.getenv("VERSION_NAME") ?: "0.2.1"
+        val appVersionName = System.getenv("VERSION_NAME") ?: "0.3.0"
         versionName = appVersionName
         versionCode = appVersionName.split('.').map { part ->
             part.takeWhile { it.isDigit() }.toIntOrNull() ?: 0
