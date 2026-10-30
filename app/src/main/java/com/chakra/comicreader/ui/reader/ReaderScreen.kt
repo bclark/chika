@@ -61,6 +61,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -118,7 +119,7 @@ fun ReaderScreen(
     onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var chromeVisible by remember { mutableStateOf(true) }
+    var chromeVisible by rememberSaveable { mutableStateOf(false) }
 
     // Go fully immersive (hide the status/nav bars, incl. the battery/clock icons) while reading;
     // bring the bars back with the chrome, and restore them when leaving the reader.
