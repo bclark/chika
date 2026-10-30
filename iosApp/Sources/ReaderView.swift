@@ -377,11 +377,10 @@ struct ReaderView: View {
         }
     }
 
-    // Clamps free-pan so a floated/zoomed page can't be lost off-screen: horizontal "cover" (never
-    // exposes side background), vertical "float" keeping ≥15% on screen — Android's clampPan ported
-    // onto the same computePageDraw transform (scale about centre, then translate by pan).
+    // Clamps pan when pinched-zoomed in (> 1x) so the page stays within screen bounds on both axes;
+    // at 1x zoom the page stays locked in place (no vertical/horizontal scrolling).
     private func clampPan(_ raw: CGSize, viewSize: CGSize) -> CGSize {
-        guard let image = image else { return raw }
+        guard zoom > 1.01, let image = image else { return .zero }
         let cw = viewSize.width, ch = viewSize.height
         let draw = CameraTransformKt.computePageDraw(
             camera: camera,
@@ -392,11 +391,8 @@ struct ReaderView: View {
         let scaledH = CGFloat(draw.scaledHeight) * zoom
         let baseLeft = cw / 2 + (CGFloat(draw.left) - cw / 2) * zoom
         let baseTop = ch / 2 + (CGFloat(draw.top) - ch / 2) * zoom
-        let x: CGFloat = scaledW <= cw
-            ? (cw - scaledW) / 2 - baseLeft
-            : min(max(raw.width, cw - scaledW - baseLeft), -baseLeft)
-        let keep = 0.15 * min(scaledH, ch)
-        let y = min(max(raw.height, keep - scaledH - baseTop), ch - keep - baseTop)
+        let x: CGFloat = scaledW <= cw ? 0 : min(max(raw.width, cw - scaledW - baseLeft), -baseLeft)
+        let y: CGFloat = scaledH <= ch ? 0 : min(max(raw.height, ch - scaledH - baseTop), -baseTop)
         return CGSize(width: x, height: y)
     }
 
