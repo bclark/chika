@@ -157,20 +157,61 @@ struct OchreBadge: View {
     }
 }
 
-/// Ochre starburst page coin showing "page / total".
+/// Dog-eared page-curl bookmark badge shape.
+struct PageCurlBadgeShape: Shape {
+    var corner: CGFloat = 10
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX - corner, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + corner))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Folded corner triangle shape.
+struct PageCurlFoldShape: Shape {
+    var corner: CGFloat = 10
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.maxX - corner, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + corner))
+        p.addLine(to: CGPoint(x: rect.maxX - corner, y: rect.minY + corner))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Dog-eared page-curl bookmark badge showing current page and total page count horizontally.
 struct PageCoin: View {
     let page: Int
     let total: Int
-    var size: CGFloat = 58
     var body: some View {
-        ZStack {
-            StarburstShape().fill(Chika.ink).frame(width: size, height: size)
-            StarburstShape().fill(Chika.ochre).frame(width: size - 6, height: size - 6)
-            VStack(spacing: -7) {
-                Text("\(page)").font(.anton(20)).foregroundColor(Chika.ink)
-                Text("\(total)").font(.anton(9)).foregroundColor(Chika.ink.opacity(0.75))
-            }
+        HStack(spacing: 6) {
+            Text("\(page)")
+                .font(.archivo(15, weight: 500))
+                .foregroundColor(Chika.ink)
+            Text("/")
+                .font(.archivo(13, weight: 400))
+                .foregroundColor(Chika.ink.opacity(0.55))
+            Text("\(total)")
+                .font(.archivo(14, weight: 400))
+                .foregroundColor(Chika.ink.opacity(0.85))
         }
-        .frame(width: size, height: size)
+        .padding(.leading, 11)
+        .padding(.trailing, 15)
+        .padding(.vertical, 4)
+        .background(
+            ZStack {
+                PageCurlBadgeShape(corner: 10).fill(Color.black.opacity(0.4)).offset(x: 2.5, y: 2.5)
+                PageCurlBadgeShape(corner: 10).fill(Chika.ochre)
+                PageCurlFoldShape(corner: 10).fill(Color(red: 0.71, green: 0.57, blue: 0.16))
+                PageCurlBadgeShape(corner: 10).stroke(Chika.ink, lineWidth: 2)
+                PageCurlFoldShape(corner: 10).stroke(Chika.ink, lineWidth: 1.5)
+            }
+        )
     }
 }

@@ -185,38 +185,96 @@ fun OchreBadge(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** Ochre starburst page coin showing "page / total". */
+/** Dog-eared page-curl bookmark badge showing current page and total page count horizontally. */
 @Composable
-fun PageCoin(page: Int, total: Int, modifier: Modifier = Modifier, size: Dp = 58.dp) {
-    Box(modifier.size(size), contentAlignment = Alignment.Center) {
-        Box(
-            Modifier
-                .size(size)
-                .clip(StarburstShape)
-                .background(Ink),
-        )
-        Box(
-            Modifier
-                .size(size)
-                .padding(3.dp)
-                .clip(StarburstShape)
-                .background(Ochre),
-        )
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun PageCoin(
+    page: Int,
+    total: Int,
+    modifier: Modifier = Modifier,
+    size: Dp = Dp.Unspecified,
+) {
+    val cornerPx = with(androidx.compose.ui.platform.LocalDensity.current) { 10.dp.toPx() }
+    val shadowOffsetPx = with(androidx.compose.ui.platform.LocalDensity.current) { 2.5.dp.toPx() }
+    val strokeWidthPx = with(androidx.compose.ui.platform.LocalDensity.current) { 2.dp.toPx() }
+    val foldColor = Color(0xFFB49128)
+
+    Box(
+        modifier = modifier
+            .drawBehind {
+                val w = this.size.width
+                val h = this.size.height
+                val c = cornerPx.coerceAtMost(h / 2f)
+
+                // 1. Comic hard shadow
+                val shadowPath = androidx.compose.ui.graphics.Path().apply {
+                    val ox = shadowOffsetPx
+                    val oy = shadowOffsetPx
+                    moveTo(ox, oy)
+                    lineTo(w - c + ox, oy)
+                    lineTo(w + ox, c + oy)
+                    lineTo(w + ox, h + oy)
+                    lineTo(ox, h + oy)
+                    close()
+                }
+                drawPath(shadowPath, color = Color(0x66000000))
+
+                // 2. Main badge background
+                val badgePath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, 0f)
+                    lineTo(w - c, 0f)
+                    lineTo(w, c)
+                    lineTo(w, h)
+                    lineTo(0f, h)
+                    close()
+                }
+                drawPath(badgePath, color = Ochre)
+                drawPath(
+                    badgePath,
+                    color = Ink,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidthPx),
+                )
+
+                // 3. Folded dog-ear corner
+                val foldPath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(w - c, 0f)
+                    lineTo(w, c)
+                    lineTo(w - c, c)
+                    close()
+                }
+                drawPath(foldPath, color = foldColor)
+                drawPath(
+                    foldPath,
+                    color = Ink,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidthPx * 0.75f),
+                )
+            }
+            .padding(start = 11.dp, end = 15.dp, top = 4.dp, bottom = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             Text(
-                "$page",
-                fontFamily = Anton,
-                fontSize = 20.sp,
-                lineHeight = 16.sp,
+                text = "$page",
+                fontFamily = Archivo,
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
                 color = Ink,
             )
             Text(
-                "$total",
-                fontFamily = Anton,
-                fontSize = 9.sp,
-                lineHeight = 9.sp,
-                color = Ink.copy(alpha = 0.75f),
-                modifier = Modifier.offset(y = (-7).dp),
+                text = "/",
+                fontFamily = Archivo,
+                fontWeight = FontWeight.Normal,
+                fontSize = 13.sp,
+                color = Ink.copy(alpha = 0.55f),
+            )
+            Text(
+                text = "$total",
+                fontFamily = Archivo,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Ink.copy(alpha = 0.85f),
             )
         }
     }
