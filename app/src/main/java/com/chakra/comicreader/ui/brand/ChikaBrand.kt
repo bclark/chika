@@ -1,14 +1,19 @@
 package com.chakra.comicreader.ui.brand
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.painterResource
+import com.chakra.comicreader.R
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,29 +120,34 @@ fun Reticle(
 
 /* ---- Logo system --------------------------------------------------------------- */
 
-/** "LE·AF / COMIC READER" lockup (cream + crimson Anton over an Archivo kicker). */
+/** "LEAF" lockup (Anton in cream alongside Leaf icon, without kicker). */
 @Composable
-fun ChikaWordmark(modifier: Modifier = Modifier) {
-    Column(modifier) {
-        Text(
-            text = buildAnnotatedString {
-                withStyle(SpanStyle(color = Cream)) { append("LE") }
-                withStyle(SpanStyle(color = Crimson)) { append("AF") }
-            },
-            fontFamily = Anton,
-            fontSize = 28.sp,
+fun LeafWordmark(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_leaf_logo),
+            contentDescription = "Leaf",
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(8.dp)),
         )
         Text(
-            text = "COMIC READER",
-            fontFamily = Archivo,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 8.5.sp,
-            letterSpacing = 2.6.sp,
-            color = CreamMuted,
-            modifier = Modifier.padding(top = 3.dp),
+            text = "LEAF",
+            fontFamily = Anton,
+            fontSize = 28.sp,
+            letterSpacing = 1.sp,
+            color = Cream,
         )
     }
 }
+
+/** Backward-compatible alias for [LeafWordmark]. */
+@Composable
+fun ChikaWordmark(modifier: Modifier = Modifier) = LeafWordmark(modifier)
 
 /** The rotated ochre "kicker" banner (e.g. YOUR LIBRARY) with ink frame + hard shadow. */
 @Composable

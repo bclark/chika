@@ -1,4 +1,6 @@
-# Leaf · Comic Reader
+<p align="center">
+  <img src="docs/leaf-icon.png" width="160" alt="Leaf Logo">
+</p>
 
 <p align="center">
   <strong>Leaf</strong> is an immersive, panel-by-panel comic reader for Android built with Kotlin Multiplatform and Jetpack Compose.
