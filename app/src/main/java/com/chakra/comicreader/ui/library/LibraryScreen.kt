@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -65,6 +66,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -102,9 +104,22 @@ fun LibraryScreen(
     val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val defaultRtl by viewModel.defaultRightToLeft.collectAsStateWithLifecycle()
+    val libraryColumns by viewModel.libraryColumns.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<ComicEntity?>(null) }
     var showSourceDialog by remember { mutableStateOf(false) }
+
+    val configuration = LocalConfiguration.current
+    val screenWidthDp = configuration.screenWidthDp.dp
+    val availableColumns = remember(screenWidthDp) {
+        when {
+            screenWidthDp >= 600.dp -> listOf(2, 3, 4, 6)
+            screenWidthDp >= 380.dp -> listOf(2, 3, 4)
+            else -> listOf(2, 3)
+        }
+    }
+    val actualColumns = libraryColumns.coerceIn(2, availableColumns.last())
+    val gridState = rememberLazyGridState()
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) viewModel.importComic(uri)
@@ -116,6 +131,9 @@ fun LibraryScreen(
             viewModel.consumeMessage()
         }
     }
+
+    val horizontalSpacing = if (actualColumns >= 4) 12.dp else 16.dp
+    val verticalSpacing = if (actualColumns >= 4) 14.dp else 18.dp
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // Subtle full-bleed halftone wash + an action-burst behind the header.
@@ -130,11 +148,12 @@ fun LibraryScreen(
         )
 
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Fixed(actualColumns),
+            state = gridState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 48.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
+            verticalArrangement = Arrangement.spacedBy(verticalSpacing),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Row(
@@ -167,28 +186,73 @@ fun LibraryScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OchreBadge("YOUR LIBRARY")
-                    // Global default direction for new comics; each comic remembers its own once opened.
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            "NEW COMICS OPEN",
-                            fontFamily = Archivo,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 7.sp,
-                            color = CreamMuted,
-                        )
-                        Text(
-                            if (defaultRtl) "RTL" else "LTR",
-                            fontFamily = Archivo,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = Ink,
-                            modifier = Modifier
-                                .padding(top = 1.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(Ochre)
-                                .clickable { viewModel.toggleDefaultDirection() }
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
-                        )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // Columns / Density toggle
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                "COLUMNS",
+                                fontFamily = Archivo,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 7.sp,
+                                color = CreamMuted,
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .padding(top = 1.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(InkSoft)
+                                    .border(1.dp, Ink, RoundedCornerShape(3.dp)),
+                                horizontalArrangement = Arrangement.spacedBy(1.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                availableColumns.forEach { count ->
+                                    val isSelected = actualColumns == count
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(2.dp))
+                                            .background(if (isSelected) Ochre else Color.Transparent)
+                                            .clickable { viewModel.setLibraryColumns(count) }
+                                            .padding(horizontal = 7.dp, vertical = 3.5.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            "$count",
+                                            fontFamily = Archivo,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.5.sp,
+                                            color = if (isSelected) Ink else CreamMuted,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Global default direction for new comics; each comic remembers its own once opened.
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                "NEW COMICS OPEN",
+                                fontFamily = Archivo,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 7.sp,
+                                color = CreamMuted,
+                            )
+                            Text(
+                                if (defaultRtl) "RTL" else "LTR",
+                                fontFamily = Archivo,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Ink,
+                                modifier = Modifier
+                                    .padding(top = 1.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Ochre)
+                                    .clickable { viewModel.toggleDefaultDirection() }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -206,6 +270,7 @@ fun LibraryScreen(
             items(comics, key = { it.id }) { comic ->
                 ComicCard(
                     comic = comic,
+                    columns = actualColumns,
                     onClick = { onOpenComic(comic.id) },
                     onLongClick = { pendingDelete = comic },
                 )
@@ -214,6 +279,7 @@ fun LibraryScreen(
                 AddTile(
                     importing = importing,
                     progress = importProgress,
+                    columns = actualColumns,
                     onClick = { if (!importing) showSourceDialog = true },
                 )
             }
@@ -292,26 +358,35 @@ fun LibraryScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ComicCard(comic: ComicEntity, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun ComicCard(
+    comic: ComicEntity,
+    columns: Int = 2,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
     val pct = if (comic.pageCount > 0) ((comic.lastPage + 1f) / comic.pageCount).coerceIn(0f, 1f) else 0f
     val started = comic.lastPage > 0
+    val borderWidth = if (columns >= 4) 2.dp else 3.dp
+    val shadowOffset = if (columns >= 4) 3.dp else 5.dp
+    val progressHeight = if (columns >= 4) 5.dp else 7.dp
+
     Column(Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(0.7f)
-                .comicShadow(offset = 5.dp, color = Color(0xB3000000))
+                .comicShadow(offset = shadowOffset, color = Color(0xB3000000))
                 .clip(RoundedCornerShape(4.dp))
                 .background(InkSoft)
-                .border(3.dp, Ink, RoundedCornerShape(4.dp)),
+                .border(borderWidth, Ink, RoundedCornerShape(4.dp)),
         ) {
             val cover = rememberCover(comic.coverPath)
             if (cover != null) {
                 Image(cover, comic.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             } else {
-                GeneratedCover(comic.title)
+                GeneratedCover(comic.title, columns = columns)
             }
-            Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(7.dp).background(Ink)) {
+            Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(progressHeight).background(Ink)) {
                 Box(Modifier.fillMaxWidth(pct).fillMaxHeight().background(Ochre))
             }
         }
@@ -319,18 +394,18 @@ private fun ComicCard(comic: ComicEntity, onClick: () -> Unit, onLongClick: () -
             comic.title.uppercase(),
             fontFamily = Archivo,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 12.sp,
+            fontSize = if (columns >= 5) 10.sp else if (columns >= 4) 11.sp else 12.sp,
             color = Cream,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 9.dp),
+            modifier = Modifier.padding(top = if (columns >= 4) 6.dp else 9.dp),
         )
         Text(
             if (started) "${(pct * 100).toInt()}% · pg ${comic.lastPage + 1}/${comic.pageCount}"
             else "${comic.pageCount} pages",
             fontFamily = Archivo,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 9.5.sp,
+            fontSize = if (columns >= 4) 8.5.sp else 9.5.sp,
             color = CreamMuted,
             modifier = Modifier.padding(top = 2.dp),
         )
@@ -338,14 +413,16 @@ private fun ComicCard(comic: ComicEntity, onClick: () -> Unit, onLongClick: () -
 }
 
 @Composable
-private fun GeneratedCover(title: String) {
+private fun GeneratedCover(title: String, columns: Int = 2) {
+    val fontSize = if (columns >= 5) 13.sp else if (columns >= 4) 15.sp else if (columns == 3) 18.sp else 22.sp
+    val padding = if (columns >= 4) 8.dp else 12.dp
     Box(Modifier.fillMaxSize().background(InkSoft).halftone(Crimson, alpha = 0.18f)) {
         Text(
             title.uppercase(),
             fontFamily = Anton,
-            fontSize = 22.sp,
+            fontSize = fontSize,
             color = Cream,
-            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
+            modifier = Modifier.align(Alignment.BottomStart).padding(padding),
         )
     }
 }
@@ -524,7 +601,19 @@ fun SmbDriveScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AddTile(importing: Boolean, progress: Float, onClick: () -> Unit) {
+private fun AddTile(
+    importing: Boolean,
+    progress: Float,
+    columns: Int = 2,
+    onClick: () -> Unit,
+) {
+    val starburstSize = if (columns >= 5) 42.dp else if (columns >= 4) 50.dp else 64.dp
+    val iconSize = if (columns >= 5) 18.dp else if (columns >= 4) 22.dp else 26.dp
+    val fontSize = if (columns >= 5) 11.sp else if (columns >= 4) 12.sp else 14.sp
+    val spacing = if (columns >= 4) 6.dp else 10.dp
+    val contentPadding = if (columns >= 4) 8.dp else 16.dp
+    val strokeWidth = if (columns >= 4) 2.dp else 3.dp
+
     Box(
         Modifier
             .fillMaxWidth()
@@ -535,7 +624,7 @@ private fun AddTile(importing: Boolean, progress: Float, onClick: () -> Unit) {
                 drawRoundRect(
                     color = CreamMuted,
                     style = Stroke(
-                        width = 3.dp.toPx(),
+                        width = strokeWidth.toPx(),
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f)),
                     ),
                     cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
@@ -545,23 +634,23 @@ private fun AddTile(importing: Boolean, progress: Float, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = contentPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(spacing),
         ) {
             Box(
-                Modifier.size(64.dp).clip(StarburstShape).background(Crimson),
+                Modifier.size(starburstSize).clip(StarburstShape).background(Crimson),
                 contentAlignment = Alignment.Center,
             ) {
-                if (importing) CircularProgressIndicator(color = Cream, modifier = Modifier.size(26.dp))
-                else Icon(Icons.Default.Add, contentDescription = "Load comic", tint = Cream)
+                if (importing) CircularProgressIndicator(color = Cream, modifier = Modifier.size(iconSize))
+                else Icon(Icons.Default.Add, contentDescription = "Load comic", tint = Cream, modifier = Modifier.size(iconSize))
             }
             Text(
                 if (importing && progress > 0f) "LOADING ${(progress * 100).toInt()}%"
                 else if (importing) "LOADING…"
                 else "LOAD COMIC",
                 fontFamily = Anton,
-                fontSize = 14.sp,
+                fontSize = fontSize,
                 color = Cream,
             )
             if (importing) {
@@ -570,13 +659,13 @@ private fun AddTile(importing: Boolean, progress: Float, onClick: () -> Unit) {
                         progress = { progress },
                         color = Ochre,
                         trackColor = Ink,
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                        modifier = Modifier.fillMaxWidth().height(if (columns >= 4) 4.dp else 6.dp).clip(RoundedCornerShape(3.dp)),
                     )
                 } else {
                     LinearProgressIndicator(
                         color = Ochre,
                         trackColor = Ink,
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                        modifier = Modifier.fillMaxWidth().height(if (columns >= 4) 4.dp else 6.dp).clip(RoundedCornerShape(3.dp)),
                     )
                 }
             }

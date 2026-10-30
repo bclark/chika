@@ -28,6 +28,10 @@ class LibraryViewModel(
     private val _defaultRightToLeft = MutableStateFlow(settings.defaultRightToLeft)
     val defaultRightToLeft: StateFlow<Boolean> = _defaultRightToLeft.asStateFlow()
 
+    /** Number of columns displayed in the library grid. */
+    private val _libraryColumns = MutableStateFlow(settings.libraryColumns)
+    val libraryColumns: StateFlow<Int> = _libraryColumns.asStateFlow()
+
     private val _importing = MutableStateFlow(false)
     val importing: StateFlow<Boolean> = _importing.asStateFlow()
 
@@ -95,6 +99,12 @@ class LibraryViewModel(
     fun toggleDefaultDirection() {
         settings.defaultRightToLeft = !settings.defaultRightToLeft
         _defaultRightToLeft.value = settings.defaultRightToLeft
+    }
+
+    /** Sets the number of columns in the library grid and persists it. */
+    fun setLibraryColumns(columns: Int) {
+        settings.libraryColumns = columns
+        _libraryColumns.value = columns
     }
 
     fun consumeMessage() {
