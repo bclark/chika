@@ -350,18 +350,21 @@ private fun PageViewer(
                         if (pastSlop) {
                             val newScale = (userScale * zoomChange).coerceIn(1f, 5f)
                             userScale = newScale
-                            // Horizontal stays covered (no background at the sides); vertical floats
-                            // over the background, bounded so a sliver always stays grabbable.
-                            val draw = computePageDraw(
-                                camera.value, image.width, image.height,
-                                size.width.toFloat(), size.height.toFloat(),
-                            )
-                            val cw = size.width.toFloat()
-                            val ch = size.height.toFloat()
-                            val baseLeft = cw / 2f + (draw.left - cw / 2f) * newScale
-                            val baseTop = ch / 2f + (draw.top - ch / 2f) * newScale
-                            userPanX = clampPanHorizontal(userPanX + panChange.x, baseLeft, draw.scaledWidth * newScale, cw)
-                            userPanY = clampPanVertical(userPanY + panChange.y, baseTop, draw.scaledHeight * newScale, ch)
+                            if (newScale <= 1.01f) {
+                                userPanX = 0f
+                                userPanY = 0f
+                            } else {
+                                val draw = computePageDraw(
+                                    camera.value, image.width, image.height,
+                                    size.width.toFloat(), size.height.toFloat(),
+                                )
+                                val cw = size.width.toFloat()
+                                val ch = size.height.toFloat()
+                                val baseLeft = cw / 2f + (draw.left - cw / 2f) * newScale
+                                val baseTop = ch / 2f + (draw.top - ch / 2f) * newScale
+                                userPanX = clampPan(userPanX + panChange.x, baseLeft, draw.scaledWidth * newScale, cw)
+                                userPanY = clampPan(userPanY + panChange.y, baseTop, draw.scaledHeight * newScale, ch)
+                            }
                             event.changes.forEach { if (it.positionChanged()) it.consume() }
                         }
                     } while (event.changes.any { it.pressed })
@@ -447,29 +450,13 @@ private fun ErrorView(message: String) {
 }
 
 /**
- * Horizontal clamp ("cover"): the comic never exposes background to its left or right. When wider
- * than the screen (zoomed) it pans only until an edge meets the screen edge; when it fits, it's
- * centered. This keeps sideways drags clean and reserves horizontal flicks for page turns. [base] is
- * the image's left at zero pan, [size] its scaled width, [container] the screen width.
+ * Clamps pan along one axis when zoomed in (> 1x): when larger than the screen, pans only until an
+ * edge meets the screen edge; when it fits within the screen along that axis, stays locked at 0.
  */
-private fun clampPanHorizontal(pan: Float, base: Float, size: Float, container: Float): Float {
-    if (size <= container) return (container - size) / 2f - base
+private fun clampPan(pan: Float, base: Float, size: Float, container: Float): Float {
+    if (size <= container) return 0f
     return pan.coerceIn(container - size - base, -base)
 }
-
-/**
- * Vertical clamp ("float over background"): the comic may move freely up/down — even past the top or
- * bottom edge, revealing background — but is bounded so at least [MIN_VISIBLE_FRACTION] of it always
- * stays on screen and grabbable. [base] is the image's top at zero pan, [size] its scaled height,
- * [container] the screen height.
- */
-private fun clampPanVertical(pan: Float, base: Float, size: Float, container: Float): Float {
-    val keep = MIN_VISIBLE_FRACTION * minOf(size, container)
-    return pan.coerceIn(keep - size - base, container - keep - base)
-}
-
-/** Fraction of the comic kept on screen when it's dragged off the top/bottom, so it can't be lost. */
-private const val MIN_VISIBLE_FRACTION = 0.15f
 
 /** A single tap waits this long for a possible second tap before acting, enabling double-tap. */
 private const val DOUBLE_TAP_WINDOW_MS = 220L
