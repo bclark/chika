@@ -10,6 +10,11 @@
 # commons-compress
 -dontwarn org.apache.commons.compress.**
 
+# smbj & BouncyCastle
+-dontwarn com.hierynomus.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.slf4j.**
+
 # TensorFlow Lite / LiteRT (same org.tensorflow.lite package)
 -keep class org.tensorflow.lite.** { *; }
 -dontwarn org.tensorflow.lite.**

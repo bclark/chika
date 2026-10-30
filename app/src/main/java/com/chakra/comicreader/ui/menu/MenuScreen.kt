@@ -22,20 +22,31 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.chakra.comicreader.data.settings.AppSettings
+import com.chakra.comicreader.data.smb.SmbClient
 import com.chakra.comicreader.ui.brand.ChikaWordmark
 import com.chakra.comicreader.ui.brand.OchreBadge
 import com.chakra.comicreader.ui.brand.comicShadow
@@ -48,6 +59,9 @@ import com.chakra.comicreader.ui.theme.Crimson
 import com.chakra.comicreader.ui.theme.Ink
 import com.chakra.comicreader.ui.theme.InkSoft
 import com.chakra.comicreader.ui.theme.Ochre
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val DONATION_URL = "https://github.com/batunii/chika"
 private const val PRIVACY_URL = "https://github.com/batunii/chika/blob/main/PRIVACY.md"
@@ -57,9 +71,19 @@ private const val LICENSES_URL = "https://github.com/batunii/chika/blob/main/THI
 fun MenuScreen(
     amoledTheme: Boolean,
     onSetAmoledTheme: (Boolean) -> Unit,
+    settings: AppSettings,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var smbHost by remember { mutableStateOf(settings.smbHost) }
+    var smbShare by remember { mutableStateOf(settings.smbShare) }
+    var smbUsername by remember { mutableStateOf(settings.smbUsername) }
+    var smbPassword by remember { mutableStateOf(settings.smbPassword) }
+    var smbTesting by remember { mutableStateOf(false) }
+    var smbValid by remember { mutableStateOf<Boolean?>(null) }
+    var smbStatusMessage by remember { mutableStateOf<String?>(null) }
+
     val version = remember {
         runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
@@ -111,6 +135,105 @@ fun MenuScreen(
                 checked = amoledTheme,
                 onCheckedChange = onSetAmoledTheme,
             )
+
+            Spacer(Modifier.size(32.dp))
+
+            // ---- SMB Drive -----------------------------------------------------------
+            SectionLabel("SMB DRIVE")
+            Spacer(Modifier.size(10.dp))
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(InkSoft)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SmbField(
+                    label = "Host / IP (e.g. 192.168.1.50)",
+                    value = smbHost,
+                    onValueChange = { smbHost = it; smbValid = null; smbStatusMessage = null },
+                )
+                SmbField(
+                    label = "Share (e.g. comics or media/comics)",
+                    value = smbShare,
+                    onValueChange = { smbShare = it; smbValid = null; smbStatusMessage = null },
+                )
+                SmbField(
+                    label = "Username (optional)",
+                    value = smbUsername,
+                    onValueChange = { smbUsername = it; smbValid = null; smbStatusMessage = null },
+                )
+                SmbField(
+                    label = "Password (optional)",
+                    value = smbPassword,
+                    password = true,
+                    onValueChange = { smbPassword = it; smbValid = null; smbStatusMessage = null },
+                )
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Ochre)
+                        .clickable(enabled = !smbTesting) {
+                            settings.smbHost = smbHost
+                            settings.smbShare = smbShare
+                            settings.smbUsername = smbUsername
+                            settings.smbPassword = smbPassword
+                            smbTesting = true
+                            smbValid = null
+                            smbStatusMessage = "Testing connection…"
+                            scope.launch {
+                                val res = withContext(Dispatchers.IO) {
+                                    runCatching { SmbClient.testConnection(settings) }
+                                }
+                                smbTesting = false
+                                res.onSuccess {
+                                    smbValid = true
+                                    smbStatusMessage = "✓ Connection valid — saved"
+                                }.onFailure { err ->
+                                    smbValid = false
+                                    smbStatusMessage = "✕ Connection failed: ${err.message ?: "Unable to connect"}"
+                                }
+                            }
+                        }
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (smbTesting) {
+                        CircularProgressIndicator(
+                            color = Ink,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.size(8.dp))
+                    }
+                    Text(
+                        if (smbTesting) "TESTING…" else "SAVE & TEST CONNECTION",
+                        fontFamily = Anton,
+                        fontSize = 14.sp,
+                        letterSpacing = 0.5.sp,
+                        color = Ink,
+                    )
+                }
+
+                smbStatusMessage?.let { status ->
+                    Text(
+                        status,
+                        fontFamily = Archivo,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = when (smbValid) {
+                            true -> Ochre
+                            false -> Crimson
+                            null -> CreamMuted
+                        },
+                    )
+                }
+            }
 
             Spacer(Modifier.size(32.dp))
 
@@ -203,6 +326,32 @@ private fun LinkRow(text: String, onClick: () -> Unit) {
         fontSize = 12.sp,
         color = Ochre,
         modifier = Modifier.clickable(onClick = onClick).padding(vertical = 2.dp),
+    )
+}
+
+@Composable
+private fun SmbField(
+    label: String,
+    value: String,
+    password: Boolean = false,
+    onValueChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, fontFamily = Archivo, fontSize = 11.sp) },
+        singleLine = true,
+        visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Cream,
+            unfocusedTextColor = Cream,
+            focusedBorderColor = Ochre,
+            unfocusedBorderColor = CreamMuted,
+            focusedLabelColor = Ochre,
+            unfocusedLabelColor = CreamMuted,
+            cursorColor = Ochre,
+        ),
+        modifier = Modifier.fillMaxWidth(),
     )
 }
 

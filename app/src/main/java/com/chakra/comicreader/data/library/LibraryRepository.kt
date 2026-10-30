@@ -13,6 +13,8 @@ import com.chakra.comicreader.data.archive.UnsupportedComicException
 import com.chakra.comicreader.data.db.ComicDao
 import com.chakra.comicreader.data.db.ComicEntity
 import com.chakra.comicreader.data.settings.AppSettings
+import com.chakra.comicreader.data.smb.SmbClient
+import com.chakra.comicreader.data.smb.SmbEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -43,66 +45,115 @@ class LibraryRepository(
         dao.updateReadingDirection(id, rightToLeft)
 
     /** Copies, validates, and indexes a picked comic. Returns the new row id, or an error. */
-    suspend fun importComic(uri: Uri): Result<Long> = withContext(Dispatchers.IO) {
+    suspend fun importComic(
+        uri: Uri,
+        onProgress: (Float) -> Unit = {},
+    ): Result<Long> = withContext(Dispatchers.IO) {
         val token = UUID.randomUUID().toString()
         val comicsDir = File(context.filesDir, "comics").apply { mkdirs() }
         val coversDir = File(context.filesDir, "covers").apply { mkdirs() }
 
-        val displayName = queryDisplayName(uri) ?: "Comic"
-        val ext = displayName.substringAfterLast('.', "").lowercase().ifEmpty { "cbz" }
-        val title = displayName.substringBeforeLast('.', displayName)
+        val (displayName, totalBytes) = queryFileMeta(uri)
+        val name = displayName ?: "Comic"
+        val ext = name.substringAfterLast('.', "").lowercase().ifEmpty { "cbz" }
+        val title = name.substringBeforeLast('.', name)
         val dest = File(comicsDir, "$token.$ext")
 
         try {
             context.contentResolver.openInputStream(uri)?.use { input ->
-                dest.outputStream().use { input.copyTo(it) }
+                dest.outputStream().use { output ->
+                    val buf = ByteArray(64 * 1024)
+                    var copied = 0L
+                    var read: Int
+                    while (input.read(buf).also { read = it } >= 0) {
+                        output.write(buf, 0, read)
+                        copied += read
+                        if (totalBytes > 0L) {
+                            onProgress((copied.toFloat() / totalBytes).coerceIn(0f, 1f))
+                        }
+                    }
+                }
             } ?: return@withContext Result.failure(
                 UnsupportedComicException("Could not open the selected file."),
             )
-
-            val format = ComicArchiveFactory.detectFormat(dest)
-            if (format == ComicFormat.UNKNOWN) {
-                dest.delete()
-                return@withContext Result.failure(
-                    UnsupportedComicException("Not a CBZ, CBR, or PDF file."),
-                )
-            }
-
-            val (pageCount, coverPath) = ComicArchiveFactory.open(dest).use { archive ->
-                val count = archive.pageCount
-                if (count == 0) return@use 0 to null
-                val coverFile = File(coversDir, "$token.jpg")
-                val saved = runCatching { saveCover(archive.readPage(0), coverFile) }
-                    .getOrDefault(false)
-                count to coverFile.absolutePath.takeIf { saved }
-            }
-
-            if (pageCount == 0) {
-                dest.delete()
-                return@withContext Result.failure(
-                    UnsupportedComicException("This archive has no readable pages."),
-                )
-            }
-
-            val now = System.currentTimeMillis()
-            val id = dao.insert(
-                ComicEntity(
-                    title = title,
-                    filePath = dest.absolutePath,
-                    coverPath = coverPath,
-                    format = format.name,
-                    pageCount = pageCount,
-                    rightToLeft = settings.defaultRightToLeft,
-                    dateAdded = now,
-                    lastOpened = now,
-                ),
-            )
-            Result.success(id)
+            indexCopiedFile(dest, coversDir, token, title)
         } catch (t: Throwable) {
             Log.e(TAG, "Import failed", t)
             dest.delete()
             Result.failure(t)
         }
+    }
+
+    suspend fun listSmbDirectory(relativePath: String): Result<List<SmbEntry>> =
+        withContext(Dispatchers.IO) {
+            runCatching { SmbClient.listDirectory(settings, relativePath) }
+        }
+
+    suspend fun importSmbComic(
+        entry: SmbEntry,
+        onProgress: (Float) -> Unit = {},
+    ): Result<Long> = withContext(Dispatchers.IO) {
+        val token = UUID.randomUUID().toString()
+        val comicsDir = File(context.filesDir, "comics").apply { mkdirs() }
+        val coversDir = File(context.filesDir, "covers").apply { mkdirs() }
+        val ext = entry.name.substringAfterLast('.', "").lowercase().ifEmpty { "cbz" }
+        val title = entry.name.substringBeforeLast('.', entry.name)
+        val dest = File(comicsDir, "$token.$ext")
+
+        try {
+            SmbClient.downloadToFile(settings, entry, dest, onProgress)
+            indexCopiedFile(dest, coversDir, token, title)
+        } catch (t: Throwable) {
+            Log.e(TAG, "SMB import failed", t)
+            dest.delete()
+            Result.failure(t)
+        }
+    }
+
+    private suspend fun indexCopiedFile(
+        dest: File,
+        coversDir: File,
+        token: String,
+        title: String,
+    ): Result<Long> {
+        val format = ComicArchiveFactory.detectFormat(dest)
+        if (format == ComicFormat.UNKNOWN) {
+            dest.delete()
+            return Result.failure(
+                UnsupportedComicException("Not a CBZ, CBR, or PDF file."),
+            )
+        }
+
+        val (pageCount, coverPath) = ComicArchiveFactory.open(dest).use { archive ->
+            val count = archive.pageCount
+            if (count == 0) return@use 0 to null
+            val coverFile = File(coversDir, "$token.jpg")
+            val saved = runCatching { saveCover(archive.readPage(0), coverFile) }
+                .getOrDefault(false)
+            count to coverFile.absolutePath.takeIf { saved }
+        }
+
+        if (pageCount == 0) {
+            dest.delete()
+            return Result.failure(
+                UnsupportedComicException("This archive has no readable pages."),
+            )
+        }
+
+        val now = System.currentTimeMillis()
+        val id = dao.insert(
+            ComicEntity(
+                title = title,
+                filePath = dest.absolutePath,
+                coverPath = coverPath,
+                format = format.name,
+                pageCount = pageCount,
+                rightToLeft = settings.defaultRightToLeft,
+                dateAdded = now,
+                lastOpened = now,
+            ),
+        )
+        return Result.success(id)
     }
 
     suspend fun deleteComic(id: Long) = withContext(Dispatchers.IO) {
@@ -133,18 +184,21 @@ class LibraryRepository(
         }
     }
 
-    private fun queryDisplayName(uri: Uri): String? {
+    private fun queryFileMeta(uri: Uri): Pair<String?, Long> {
         var cursor: Cursor? = null
         return try {
             cursor = context.contentResolver.query(
-                uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null,
+                uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null,
             )
             if (cursor != null && cursor.moveToFirst()) {
-                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (idx >= 0) cursor.getString(idx) else null
-            } else null
+                val nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val sizeIdx = cursor.getColumnIndex(OpenableColumns.SIZE)
+                val name = if (nameIdx >= 0) cursor.getString(nameIdx) else null
+                val size = if (sizeIdx >= 0 && !cursor.isNull(sizeIdx)) cursor.getLong(sizeIdx) else 0L
+                name to size
+            } else null to 0L
         } catch (t: Throwable) {
-            null
+            null to 0L
         } finally {
             cursor?.close()
         }

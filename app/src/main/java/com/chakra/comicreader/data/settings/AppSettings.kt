@@ -21,8 +21,31 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_AMOLED, false)
         set(value) { prefs.edit().putBoolean(KEY_AMOLED, value).apply() }
 
+    var smbHost: String
+        get() = prefs.getString(KEY_SMB_HOST, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_SMB_HOST, value.trim()).apply() }
+
+    var smbShare: String
+        get() = prefs.getString(KEY_SMB_SHARE, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_SMB_SHARE, value.trim().trim('/')).apply() }
+
+    var smbUsername: String
+        get() = prefs.getString(KEY_SMB_USER, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_SMB_USER, value.trim()).apply() }
+
+    var smbPassword: String
+        get() = prefs.getString(KEY_SMB_PASS, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_SMB_PASS, value).apply() }
+
+    val hasSmbConfig: Boolean
+        get() = smbHost.isNotBlank() && smbShare.isNotBlank()
+
     private companion object {
         const val KEY_DEFAULT_RTL = "default_rtl"
         const val KEY_AMOLED = "amoled_theme"
+        const val KEY_SMB_HOST = "smb_host"
+        const val KEY_SMB_SHARE = "smb_share"
+        const val KEY_SMB_USER = "smb_user"
+        const val KEY_SMB_PASS = "smb_pass"
     }
 }
