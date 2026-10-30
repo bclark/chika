@@ -21,7 +21,8 @@ object ComicArchiveFactory {
     fun open(file: File): ComicArchive = when (detectFormat(file)) {
         ComicFormat.CBZ -> ZipComicArchive(file)
         ComicFormat.CBR -> RarComicArchive(file)
+        ComicFormat.PDF -> PdfComicArchive(file)
         ComicFormat.UNKNOWN ->
-            throw UnsupportedComicException("Not a CBZ or CBR archive: ${file.name}")
+            throw UnsupportedComicException("Not a CBZ, CBR, or PDF file: ${file.name}")
     }
 }

@@ -14,9 +14,9 @@ final class LibraryStore: ObservableObject {
     private let dir: URL
 
     /// Types the file importer allows. Includes the app's exported CBZ/CBR types plus the generic
-    /// zip/archive/rar families so a plain .zip or .rar comic is selectable too.
+    /// zip/archive/rar/pdf families so a plain .zip, .rar, or .pdf comic is selectable too.
     static var importableTypes: [UTType] {
-        var types: [UTType] = [.zip, .archive]
+        var types: [UTType] = [.zip, .archive, .pdf]
         if let cbz = UTType("com.chakra.comicreader.cbz") { types.append(cbz) }
         if let cbr = UTType("com.chakra.comicreader.cbr") { types.append(cbr) }
         if let rar = UTType("com.rarlab.rar-archive") { types.append(rar) }
@@ -33,7 +33,7 @@ final class LibraryStore: ObservableObject {
     func refresh() {
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         comics = files
-            .filter { ["cbz", "zip"].contains($0.pathExtension.lowercased()) }
+            .filter { ["cbz", "zip", "pdf"].contains($0.pathExtension.lowercased()) }
             // Most-recently-opened first (Android's `ORDER BY lastOpened DESC`), then natural filename.
             .sorted {
                 let ta = ReadingProgress.openedAt($0), tb = ReadingProgress.openedAt($1)
@@ -50,12 +50,12 @@ final class LibraryStore: ObservableObject {
 
         let ext = url.pathExtension.lowercased()
         let baseName = url.deletingPathExtension().lastPathComponent
-        let dest = dir.appendingPathComponent(baseName + ".cbz")
 
         // Route by magic bytes (extension is only the fallback), matching Android's
         // ComicArchiveFactory exactly — so a mislabeled ".cbz" that is really a RAR is converted,
         // not copied in broken. Detection logic itself lives in the shared ComicFormatDetector.
         let format = ComicFormatDetector.shared.detect(head: Self.leadingBytes(of: url), fileExtension: ext)
+        let dest = dir.appendingPathComponent(baseName + (format == .pdf ? ".pdf" : ".cbz"))
 
         if format == .cbr {
             // Stage a local copy first so conversion isn't reading a scoped URL on a background Task.

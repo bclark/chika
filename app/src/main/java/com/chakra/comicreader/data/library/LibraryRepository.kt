@@ -64,7 +64,7 @@ class LibraryRepository(
             if (format == ComicFormat.UNKNOWN) {
                 dest.delete()
                 return@withContext Result.failure(
-                    UnsupportedComicException("Not a CBZ or CBR file."),
+                    UnsupportedComicException("Not a CBZ, CBR, or PDF file."),
                 )
             }
 
