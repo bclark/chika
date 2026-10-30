@@ -131,9 +131,7 @@ fun LeafWordmark(modifier: Modifier = Modifier) {
         Image(
             painter = painterResource(R.drawable.ic_leaf_logo),
             contentDescription = "Leaf",
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(8.dp)),
+            modifier = Modifier.size(36.dp),
         )
         Text(
             text = "LEAF",

@@ -339,7 +339,7 @@ fun MenuScreen(
             OchreBadge("VERSION $version")
             Spacer(Modifier.size(14.dp))
             Text(
-                "A comic reader for Android & iOS",
+                "A comic reader for Android",
                 fontFamily = Archivo,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
