@@ -71,6 +71,8 @@ private const val LICENSES_URL = "https://github.com/batunii/chika/blob/main/THI
 fun MenuScreen(
     amoledTheme: Boolean,
     onSetAmoledTheme: (Boolean) -> Unit,
+    pageSlideEnabled: Boolean,
+    onSetPageSlideEnabled: (Boolean) -> Unit,
     settings: AppSettings,
     onBack: () -> Unit,
 ) {
@@ -134,6 +136,18 @@ fun MenuScreen(
                 subtitle = "True-black background — easy on OLED screens and battery.",
                 checked = amoledTheme,
                 onCheckedChange = onSetAmoledTheme,
+            )
+
+            Spacer(Modifier.size(32.dp))
+
+            // ---- Reading -------------------------------------------------------------
+            SectionLabel("READING")
+            Spacer(Modifier.size(10.dp))
+            ToggleRow(
+                title = "Page Slide Transition",
+                subtitle = "Slide adjacent pages side-by-side with your finger (disables classic swipe-to-turn).",
+                checked = pageSlideEnabled,
+                onCheckedChange = onSetPageSlideEnabled,
             )
 
             Spacer(Modifier.size(32.dp))

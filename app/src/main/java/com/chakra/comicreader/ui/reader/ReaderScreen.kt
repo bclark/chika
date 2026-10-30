@@ -1,6 +1,9 @@
 package com.chakra.comicreader.ui.reader
 
 import android.app.Activity
+import android.graphics.Bitmap
+import android.graphics.Paint
+import android.graphics.Rect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector4D
@@ -26,6 +29,8 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +57,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -59,7 +65,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -104,6 +114,7 @@ private val PanelConverter = TwoWayConverter<Panel, AnimationVector4D>(
 @Composable
 fun ReaderScreen(
     viewModel: ReaderViewModel,
+    pageSlideEnabled: Boolean,
     onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -135,6 +146,11 @@ fun ReaderScreen(
         when {
             state.error != null -> ErrorView(state.error!!)
             state.page == null -> LoadingView()
+            pageSlideEnabled -> SlidePageViewer(
+                state = state,
+                viewModel = viewModel,
+                onToggleChrome = { chromeVisible = !chromeVisible },
+            )
             else -> PageViewer(
                 state = state,
                 onNext = viewModel::next,
@@ -209,6 +225,7 @@ fun ReaderScreen(
             PageScrubber(
                 pageIndex = state.pageIndex,
                 pageCount = state.pageCount,
+                pageSlideEnabled = pageSlideEnabled,
                 onJumpToPage = viewModel::jumpToPage,
             )
         }
@@ -219,6 +236,7 @@ fun ReaderScreen(
 private fun PageScrubber(
     pageIndex: Int,
     pageCount: Int,
+    pageSlideEnabled: Boolean,
     onJumpToPage: (Int) -> Unit,
 ) {
     var scrubbing by remember { mutableStateOf(false) }
@@ -239,7 +257,7 @@ private fun PageScrubber(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "SWIPE TO TURN",
+                if (pageSlideEnabled) "PAGE SLIDE" else "SWIPE TO TURN",
                 fontFamily = Anton,
                 fontSize = 12.sp,
                 letterSpacing = 2.sp,
@@ -261,6 +279,503 @@ private fun PageScrubber(
                 inactiveTrackColor = Cream.copy(alpha = 0.2f),
             ),
         )
+    }
+}
+
+private enum class CurlDirection {
+    FORWARD,
+    BACKWARD,
+}
+
+private const val MESH_COLS = 36
+private const val MESH_ROWS = 4
+private const val MESH_VERT_COUNT = (MESH_COLS + 1) * (MESH_ROWS + 1) * 2
+
+@Composable
+private fun SlidePageViewer(
+    state: ReaderUiState,
+    viewModel: ReaderViewModel,
+    onToggleChrome: () -> Unit,
+) {
+    val pageCount = state.pageCount.coerceAtLeast(1)
+    val pageIndex = state.pageIndex.coerceIn(0, pageCount - 1)
+    val rtl = state.rightToLeft
+    val scope = rememberCoroutineScope()
+
+    val currentBitmap = state.page
+    val nextBitmap by produceState<Bitmap?>(
+        initialValue = viewModel.getCachedPageBitmap(pageIndex + 1),
+        key1 = pageIndex,
+    ) {
+        if (pageIndex < pageCount - 1) {
+            value = viewModel.getCachedPageBitmap(pageIndex + 1) ?: viewModel.loadPageBitmap(pageIndex + 1)
+        }
+    }
+    val prevBitmap by produceState<Bitmap?>(
+        initialValue = viewModel.getCachedPageBitmap(pageIndex - 1),
+        key1 = pageIndex,
+    ) {
+        if (pageIndex > 0) {
+            value = viewModel.getCachedPageBitmap(pageIndex - 1) ?: viewModel.loadPageBitmap(pageIndex - 1)
+        }
+    }
+
+    var curlDirection by remember { mutableStateOf<CurlDirection?>(null) }
+    var curlProgress by remember { mutableFloatStateOf(0f) }
+
+    val turnForward: () -> Unit = {
+        val target = if (rtl) pageIndex - 1 else pageIndex + 1
+        if (target in 0 until pageCount && curlDirection == null) {
+            curlDirection = CurlDirection.FORWARD
+            scope.launch {
+                animate(0f, 1f, animationSpec = tween(280, easing = FastOutSlowInEasing)) { value, _ ->
+                    curlProgress = value
+                }
+                viewModel.onPageSettled(target)
+                curlProgress = 0f
+                curlDirection = null
+            }
+        }
+    }
+
+    val turnBackward: () -> Unit = {
+        val target = if (rtl) pageIndex + 1 else pageIndex - 1
+        if (target in 0 until pageCount && curlDirection == null) {
+            curlDirection = CurlDirection.BACKWARD
+            scope.launch {
+                animate(0f, 1f, animationSpec = tween(280, easing = FastOutSlowInEasing)) { value, _ ->
+                    curlProgress = value
+                }
+                viewModel.onPageSettled(target)
+                curlProgress = 0f
+                curlDirection = null
+            }
+        }
+    }
+
+    val meshPaint = remember { Paint().apply { isFilterBitmap = true } }
+    val verts = remember { FloatArray(MESH_VERT_COUNT) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(pageIndex, pageCount, rtl) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val downX = down.position.x
+                    val downY = down.position.y
+                    var dragX = 0f
+                    var dragY = 0f
+                    var isDrag = false
+                    var activeDirection: CurlDirection? = null
+                    val slop = viewConfiguration.touchSlop
+                    val tracker = VelocityTracker()
+                    tracker.addPosition(down.uptimeMillis, down.position)
+
+                    do {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        tracker.addPosition(change.uptimeMillis, change.position)
+                        dragX = change.position.x - downX
+                        dragY = change.position.y - downY
+
+                        if (!isDrag && (abs(dragX) > slop || abs(dragY) > slop)) {
+                            if (abs(dragX) > abs(dragY)) {
+                                isDrag = true
+                                val dir = if (!rtl) {
+                                    if (dragX < 0f) CurlDirection.FORWARD else CurlDirection.BACKWARD
+                                } else {
+                                    if (dragX > 0f) CurlDirection.FORWARD else CurlDirection.BACKWARD
+                                }
+                                val canTurn = when (dir) {
+                                    CurlDirection.FORWARD -> (if (!rtl) pageIndex < pageCount - 1 else pageIndex > 0)
+                                    CurlDirection.BACKWARD -> (if (!rtl) pageIndex > 0 else pageIndex < pageCount - 1)
+                                }
+                                if (canTurn) {
+                                    activeDirection = dir
+                                    curlDirection = dir
+                                }
+                            }
+                        }
+
+                        if (isDrag && activeDirection != null) {
+                            change.consume()
+                            val containerW = size.width.toFloat()
+                            val rawT = if (!rtl) {
+                                if (activeDirection == CurlDirection.FORWARD) -dragX / containerW else dragX / containerW
+                            } else {
+                                if (activeDirection == CurlDirection.FORWARD) dragX / containerW else -dragX / containerW
+                            }
+                            curlProgress = rawT.coerceIn(0f, 1f)
+                        }
+                    } while (event.changes.any { it.pressed })
+
+                    if (!isDrag) {
+                        val w = size.width.toFloat()
+                        when {
+                            downX < w / 3f -> if (rtl) turnForward() else turnBackward()
+                            downX > w * 2f / 3f -> if (rtl) turnBackward() else turnForward()
+                            else -> onToggleChrome()
+                        }
+                    } else if (activeDirection != null) {
+                        val velocity = tracker.calculateVelocity().x
+                        val velInTurnDir = if (!rtl) {
+                            if (activeDirection == CurlDirection.FORWARD) -velocity else velocity
+                        } else {
+                            if (activeDirection == CurlDirection.FORWARD) velocity else -velocity
+                        }
+                        val settleForward = (curlProgress > 0.35f || velInTurnDir > 800f) && velInTurnDir > -600f
+                        scope.launch {
+                            if (settleForward) {
+                                animate(curlProgress, 1f, animationSpec = tween(240, easing = FastOutSlowInEasing)) { value, _ ->
+                                    curlProgress = value
+                                }
+                                val target = when (activeDirection) {
+                                    CurlDirection.FORWARD -> if (rtl) pageIndex - 1 else pageIndex + 1
+                                    CurlDirection.BACKWARD -> if (rtl) pageIndex + 1 else pageIndex - 1
+                                }
+                                viewModel.onPageSettled(target)
+                            } else {
+                                animate(curlProgress, 0f, animationSpec = tween(200, easing = FastOutSlowInEasing)) { value, _ ->
+                                    curlProgress = value
+                                }
+                            }
+                            curlProgress = 0f
+                            curlDirection = null
+                        }
+                    }
+                }
+            },
+    ) {
+        if (currentBitmap == null) {
+            LoadingView()
+        } else {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val draw = computePageDraw(
+                    camera = Panel.FULL_PAGE,
+                    bitmapW = currentBitmap.width,
+                    bitmapH = currentBitmap.height,
+                    containerW = size.width,
+                    containerH = size.height,
+                )
+
+                if (curlDirection == null || curlProgress <= 0.001f) {
+                    drawIntoCanvas { canvas ->
+                        val src = Rect(0, 0, currentBitmap.width, currentBitmap.height)
+                        val dst = Rect(
+                            draw.left.roundToInt(),
+                            draw.top.roundToInt(),
+                            (draw.left + draw.scaledWidth).roundToInt(),
+                            (draw.top + draw.scaledHeight).roundToInt(),
+                        )
+                        canvas.nativeCanvas.drawBitmap(currentBitmap, src, dst, meshPaint)
+                    }
+                } else {
+                    val dir = curlDirection!!
+                    val forwardUnderneath = if (!rtl) nextBitmap else prevBitmap
+                    val backwardUnderneath = if (!rtl) prevBitmap else nextBitmap
+
+                    when (dir) {
+                        CurlDirection.FORWARD -> {
+                            drawCurlTurn(
+                                topBitmap = currentBitmap,
+                                bottomBitmap = forwardUnderneath,
+                                draw = draw,
+                                progress = curlProgress,
+                                isPeelingFromRight = !rtl,
+                                verts = verts,
+                                meshPaint = meshPaint,
+                            )
+                        }
+                        CurlDirection.BACKWARD -> {
+                            val unrollingPage = backwardUnderneath
+                            if (unrollingPage != null) {
+                                drawCurlTurn(
+                                    topBitmap = unrollingPage,
+                                    bottomBitmap = currentBitmap,
+                                    draw = draw,
+                                    progress = 1f - curlProgress,
+                                    isPeelingFromRight = !rtl,
+                                    verts = verts,
+                                    meshPaint = meshPaint,
+                                )
+                            } else {
+                                drawIntoCanvas { canvas ->
+                                    val src = Rect(0, 0, currentBitmap.width, currentBitmap.height)
+                                    val dst = Rect(
+                                        draw.left.roundToInt(),
+                                        draw.top.roundToInt(),
+                                        (draw.left + draw.scaledWidth).roundToInt(),
+                                        (draw.top + draw.scaledHeight).roundToInt(),
+                                    )
+                                    canvas.nativeCanvas.drawBitmap(currentBitmap, src, dst, meshPaint)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Renders a skeuomorphic 3D page curl & unroll deformer along a vertical curved axis.
+ *
+ * Peels the top page from the outer margin inward around a 3D cylindrical roll, exposing
+ * the reverse side of the page and casting a subtle progressive drop shadow onto the spread underneath.
+ */
+private fun DrawScope.drawCurlTurn(
+    topBitmap: Bitmap,
+    bottomBitmap: Bitmap?,
+    draw: PageDraw,
+    progress: Float,
+    isPeelingFromRight: Boolean,
+    verts: FloatArray,
+    meshPaint: Paint,
+) {
+    if (topBitmap.isRecycled) return
+    val t = progress.coerceIn(0f, 1f)
+    val w = draw.scaledWidth
+    val h = draw.scaledHeight
+    val left = draw.left
+    val top = draw.top
+
+    // 1. Draw underneath spread revealed by the curl
+    if (bottomBitmap != null && !bottomBitmap.isRecycled) {
+        drawIntoCanvas { canvas ->
+            val src = Rect(0, 0, bottomBitmap.width, bottomBitmap.height)
+            val dst = Rect(
+                left.roundToInt(),
+                top.roundToInt(),
+                (left + w).roundToInt(),
+                (top + h).roundToInt(),
+            )
+            canvas.nativeCanvas.drawBitmap(bottomBitmap, src, dst, meshPaint)
+        }
+    }
+
+    // 2. Geometry of the vertical cylindrical roll
+    val baseR = w * 0.08f
+    val r = (baseR * (0.8f + 0.4f * kotlin.math.sin(t * Math.PI.toFloat()))).coerceAtLeast(10f)
+
+    if (isPeelingFromRight) {
+        val xFold = left + w * (1f - t)
+        val xApex = (xFold + r).coerceAtMost(left + w)
+
+        // Drop shadow onto underneath page to the right of the apex
+        val shadowWidth = (r * 1.8f).coerceAtLeast(12.dp.toPx())
+        val shadowAlpha = (0.55f * kotlin.math.sin(t * Math.PI.toFloat())).coerceIn(0f, 0.65f)
+        if (shadowAlpha > 0.02f) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0.0f to Color.Black.copy(alpha = shadowAlpha),
+                    0.4f to Color.Black.copy(alpha = shadowAlpha * 0.45f),
+                    1.0f to Color.Transparent,
+                    startX = xApex,
+                    endX = (xApex + shadowWidth).coerceAtMost(left + w),
+                ),
+                topLeft = Offset(xApex, top),
+                size = Size((xApex + shadowWidth).coerceAtMost(left + w) - xApex, h),
+            )
+        }
+
+        // Deform top page mesh around the vertical cylinder
+        var idx = 0
+        for (row in 0..MESH_ROWS) {
+            val v = row.toFloat() / MESH_ROWS
+            val yFlat = top + v * h
+
+            for (col in 0..MESH_COLS) {
+                val u = col.toFloat() / MESH_COLS
+                val xFlat = left + u * w
+
+                val x = if (xFlat <= xFold) {
+                    xFlat
+                } else {
+                    val s = xFlat - xFold
+                    val theta = s / r
+                    if (theta <= Math.PI.toFloat()) {
+                        xFold + r * kotlin.math.sin(theta)
+                    } else {
+                        xFold - (s - Math.PI.toFloat() * r)
+                    }
+                }
+                verts[idx++] = x
+                verts[idx++] = yFlat
+            }
+        }
+
+        drawIntoCanvas { canvas ->
+            canvas.nativeCanvas.drawBitmapMesh(
+                topBitmap,
+                MESH_COLS,
+                MESH_ROWS,
+                verts,
+                0,
+                null,
+                0,
+                meshPaint,
+            )
+        }
+
+        // Crease shadow in the valley at xFold
+        val creaseWidth = (r * 0.75f).coerceAtLeast(8.dp.toPx())
+        val creaseAlpha = (0.4f * kotlin.math.sin(t * Math.PI.toFloat())).coerceIn(0f, 0.45f)
+        if (creaseAlpha > 0.02f) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0.0f to Color.Transparent,
+                    0.7f to Color.Black.copy(alpha = creaseAlpha * 0.5f),
+                    1.0f to Color.Black.copy(alpha = creaseAlpha),
+                    startX = (xFold - creaseWidth).coerceAtLeast(left),
+                    endX = xFold,
+                ),
+                topLeft = Offset((xFold - creaseWidth).coerceAtLeast(left), top),
+                size = Size(xFold - (xFold - creaseWidth).coerceAtLeast(left), h),
+            )
+        }
+
+        // Specular highlight along apex of the roll
+        val highlightWidth = r * 0.6f
+        val highlightAlpha = (0.22f * kotlin.math.sin(t * Math.PI.toFloat())).coerceIn(0f, 0.25f)
+        if (highlightAlpha > 0.02f && xApex - highlightWidth > left) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0.0f to Color.Transparent,
+                    0.5f to Color.White.copy(alpha = highlightAlpha),
+                    1.0f to Color.Transparent,
+                    startX = xApex - highlightWidth,
+                    endX = (xApex + highlightWidth * 0.5f).coerceAtMost(left + w),
+                ),
+                topLeft = Offset(xApex - highlightWidth, top),
+                size = Size((xApex + highlightWidth * 0.5f).coerceAtMost(left + w) - (xApex - highlightWidth), h),
+            )
+        }
+
+        // Reverse side of page tint across the curl
+        val reverseAlpha = (0.28f * kotlin.math.sin(t * Math.PI.toFloat())).coerceIn(0f, 0.35f)
+        if (reverseAlpha > 0.02f && xApex > xFold) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0.0f to Color(0xFFFBF0D9).copy(alpha = reverseAlpha),
+                    1.0f to Color.Transparent,
+                    startX = xFold,
+                    endX = xApex,
+                ),
+                topLeft = Offset(xFold, top),
+                size = Size(xApex - xFold, h),
+            )
+        }
+    } else {
+        // Peeling from Left edge to Right
+        val xFold = left + w * t
+        val xApex = (xFold - r).coerceAtLeast(left)
+
+        // Drop shadow onto underneath page to the left of the apex
+        val shadowWidth = (r * 1.8f).coerceAtLeast(12.dp.toPx())
+        val shadowAlpha = (0.55f * kotlin.math.sin(t * Math.PI.toFloat())).coerceIn(0f, 0.65f)
+        if (shadowAlpha > 0.02f) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0.0f to Color.Transparent,
+                    0.6f to Color.Black.copy(alpha = shadowAlpha * 0.45f),
+                    1.0f to Color.Black.copy(alpha = shadowAlpha),
+                    startX = (xApex - shadowWidth).coerceAtLeast(left),
+                    endX = xApex,
+                ),
+                topLeft = Offset((xApex - shadowWidth).coerceAtLeast(left), top),
+                size = Size(xApex - (xApex - shadowWidth).coerceAtLeast(left), h),
+            )
+        }
+
+        // Deform top page mesh around the vertical cylinder
+        var idx = 0
+        for (row in 0..MESH_ROWS) {
+            val v = row.toFloat() / MESH_ROWS
+            val yFlat = top + v * h
+
+            for (col in 0..MESH_COLS) {
+                val u = col.toFloat() / MESH_COLS
+                val xFlat = left + u * w
+
+                val x = if (xFlat >= xFold) {
+                    xFlat
+                } else {
+                    val s = xFold - xFlat
+                    val theta = s / r
+                    if (theta <= Math.PI.toFloat()) {
+                        xFold - r * kotlin.math.sin(theta)
+                    } else {
+                        xFold + (s - Math.PI.toFloat() * r)
+                    }
+                }
+                verts[idx++] = x
+                verts[idx++] = yFlat
+            }
+        }
+
+        drawIntoCanvas { canvas ->
+            canvas.nativeCanvas.drawBitmapMesh(
+                topBitmap,
+                MESH_COLS,
+                MESH_ROWS,
+                verts,
+                0,
+                null,
+                0,
+                meshPaint,
+            )
+        }
+
+        // Crease shadow in the valley at xFold
+        val creaseWidth = (r * 0.75f).coerceAtLeast(8.dp.toPx())
+        val creaseAlpha = (0.4f * kotlin.math.sin(t * Math.PI.toFloat())).coerceIn(0f, 0.45f)
+        if (creaseAlpha > 0.02f) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0.0f to Color.Black.copy(alpha = creaseAlpha),
+                    0.3f to Color.Black.copy(alpha = creaseAlpha * 0.5f),
+                    1.0f to Color.Transparent,
+                    startX = xFold,
+                    endX = (xFold + creaseWidth).coerceAtMost(left + w),
+                ),
+                topLeft = Offset(xFold, top),
+                size = Size((xFold + creaseWidth).coerceAtMost(left + w) - xFold, h),
+            )
+        }
+
+        // Specular highlight along apex of the roll
+        val highlightWidth = r * 0.6f
+        val highlightAlpha = (0.22f * kotlin.math.sin(t * Math.PI.toFloat())).coerceIn(0f, 0.25f)
+        if (highlightAlpha > 0.02f && xApex + highlightWidth < left + w) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0.0f to Color.Transparent,
+                    0.5f to Color.White.copy(alpha = highlightAlpha),
+                    1.0f to Color.Transparent,
+                    startX = (xApex - highlightWidth * 0.5f).coerceAtLeast(left),
+                    endX = xApex + highlightWidth,
+                ),
+                topLeft = Offset((xApex - highlightWidth * 0.5f).coerceAtLeast(left), top),
+                size = Size(xApex + highlightWidth - (xApex - highlightWidth * 0.5f).coerceAtLeast(left), h),
+            )
+        }
+
+        // Reverse side of page tint across the curl
+        val reverseAlpha = (0.28f * kotlin.math.sin(t * Math.PI.toFloat())).coerceIn(0f, 0.35f)
+        if (reverseAlpha > 0.02f && xFold > xApex) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0.0f to Color.Transparent,
+                    1.0f to Color(0xFFFBF0D9).copy(alpha = reverseAlpha),
+                    startX = xApex,
+                    endX = xFold,
+                ),
+                topLeft = Offset(xApex, top),
+                size = Size(xFold - xApex, h),
+            )
+        }
     }
 }
 
@@ -386,8 +901,8 @@ private fun PageViewer(
                             pendingTap = scope.launch {
                                 delay(DOUBLE_TAP_WINDOW_MS)
                                 when {
-                                    tapX < w / 3f -> onPrevPage()
-                                    tapX > w * 2f / 3f -> onNextPage()
+                                    tapX < w / 3f -> onPrev()
+                                    tapX > w * 2f / 3f -> onNext()
                                     else -> onToggleChrome()
                                 }
                                 pendingTap = null

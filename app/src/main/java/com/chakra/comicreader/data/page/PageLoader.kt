@@ -31,6 +31,10 @@ class PageLoader(
 
     val pageCount: Int get() = archive.pageCount
 
+    /** Returns the cached bitmap for [index] if already decoded in memory, or null. */
+    fun getCachedPage(index: Int): Bitmap? =
+        if (index in 0 until pageCount) cache.get(index) else null
+
     /** Returns the (possibly cached) decoded bitmap for [index], downsampled to [maxDimensionPx]. */
     suspend fun loadPage(index: Int): Bitmap = withContext(Dispatchers.IO) {
         cache.get(index)?.let { return@withContext it }
