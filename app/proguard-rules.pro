@@ -14,6 +14,8 @@
 -dontwarn com.hierynomus.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.slf4j.**
+-dontwarn javax.el.**
+-dontwarn net.engio.mbassy.**
 
 # TensorFlow Lite / LiteRT (same org.tensorflow.lite package)
 -keep class org.tensorflow.lite.** { *; }
