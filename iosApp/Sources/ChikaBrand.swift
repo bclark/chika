@@ -64,6 +64,29 @@ struct StarburstShape: Shape {
     }
 }
 
+/// Upright leaf shape (straight up and down).
+struct LeafShape: Shape {
+    private static let pts: [CGFloat] = [
+        0.441, 0.047, 0.432, 0.100, 0.400, 0.166, 0.244, 0.391,
+        0.217, 0.482, 0.213, 0.555, 0.225, 0.623, 0.258, 0.699,
+        0.393, 0.836, 0.451, 0.949, 0.455, 0.932, 0.432, 0.875,
+        0.451, 0.814, 0.523, 0.752, 0.723, 0.641, 0.771, 0.576,
+        0.783, 0.490, 0.770, 0.439, 0.730, 0.375,
+    ]
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let pts = Self.pts
+        p.move(to: CGPoint(x: pts[0] * rect.width, y: pts[1] * rect.height))
+        var i = 2
+        while i < pts.count {
+            p.addLine(to: CGPoint(x: pts[i] * rect.width, y: pts[i + 1] * rect.height))
+            i += 2
+        }
+        p.closeSubpath()
+        return p
+    }
+}
+
 /// Four L-shaped reticle corner brackets, drawn as an overlay.
 struct Reticle: View {
     var color: Color = Chika.cream

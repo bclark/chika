@@ -91,6 +91,26 @@ private val STARBURST_POINTS = floatArrayOf(
     0.18f, 0.46f, 0.04f, 0.30f, 0.25f, 0.28f, 0.21f, 0.09f, 0.40f, 0.16f,
 )
 
+/** Upright leaf shape (straight up and down), as a clip shape. */
+val LeafShape: Shape = androidx.compose.foundation.shape.GenericShape { size, _ ->
+    val pts = LEAF_POINTS
+    moveTo(pts[0] * size.width, pts[1] * size.height)
+    var i = 2
+    while (i < pts.size) {
+        lineTo(pts[i] * size.width, pts[i + 1] * size.height)
+        i += 2
+    }
+    close()
+}
+
+private val LEAF_POINTS = floatArrayOf(
+    0.441f, 0.047f, 0.432f, 0.100f, 0.400f, 0.166f, 0.244f, 0.391f,
+    0.217f, 0.482f, 0.213f, 0.555f, 0.225f, 0.623f, 0.258f, 0.699f,
+    0.393f, 0.836f, 0.451f, 0.949f, 0.455f, 0.932f, 0.432f, 0.875f,
+    0.451f, 0.814f, 0.523f, 0.752f, 0.723f, 0.641f, 0.771f, 0.576f,
+    0.783f, 0.490f, 0.770f, 0.439f, 0.730f, 0.375f,
+)
+
 /** Four L-shaped reticle corner brackets, drawn as an overlay (use with fillMaxSize/matchParentSize). */
 @Composable
 fun Reticle(

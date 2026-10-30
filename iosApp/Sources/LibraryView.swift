@@ -264,7 +264,7 @@ struct AddTile: View {
         Button(action: onTap) {
             VStack(spacing: 12) {
                 ZStack {
-                    StarburstShape().fill(Chika.crimson).frame(width: 64, height: 64)
+                    LeafShape().fill(Chika.crimson).frame(width: 64, height: 64)
                     if importing {
                         ProgressView().tint(Chika.cream)
                     } else {

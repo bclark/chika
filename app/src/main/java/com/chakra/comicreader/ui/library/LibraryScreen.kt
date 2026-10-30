@@ -100,6 +100,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.chakra.comicreader.data.db.ComicEntity
 import com.chakra.comicreader.data.smb.SmbEntry
 import com.chakra.comicreader.ui.brand.ChikaWordmark
+import com.chakra.comicreader.ui.brand.LeafShape
 import com.chakra.comicreader.ui.brand.OchreBadge
 import com.chakra.comicreader.ui.brand.StarburstShape
 import com.chakra.comicreader.ui.brand.comicShadow
@@ -1045,7 +1046,7 @@ private fun AddTile(
             verticalArrangement = Arrangement.spacedBy(spacing),
         ) {
             Box(
-                Modifier.size(starburstSize).clip(StarburstShape).background(LeafAccent),
+                Modifier.size(starburstSize).clip(LeafShape).background(LeafAccent),
                 contentAlignment = Alignment.Center,
             ) {
                 if (importing) CircularProgressIndicator(color = DeepInk, modifier = Modifier.size(iconSize))
