@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="reader_background">#FF17100E</color>
-    <color name="ic_launcher_background">#FFE0A22B</color>
+    <!-- Brand Primary & Secondary -->
+    <color name="leaf_primary">#1C3A27</color>       <!-- Forest Primary -->
+    <color name="leaf_primary_dark">#122519</color>  <!-- Deep Forest -->
+    <color name="leaf_secondary">#4A7C59</color>     <!-- Sage Secondary -->
+    <color name="leaf_accent">#D4AF37</color>        <!-- Accent Gold -->
+
+    <!-- Interface and Support -->
+    <color name="comic_rose">#935B6D</color>         <!-- Warm accent/label -->
+    <color name="paper_white">#F9F9FB</color>        <!-- Light BG / Text -->
+    <color name="deep_ink">#14191C</color>           <!-- Dark Mode BG -->
+    <color name="deep_ink_surface">#1E2529</color>   <!-- Cards/bars in Dark Mode -->
+
+    <!-- System & Launcher -->
+    <color name="reader_background">@color/deep_ink</color>
+    <color name="ic_launcher_background">@color/deep_ink_surface</color>
 </resources>

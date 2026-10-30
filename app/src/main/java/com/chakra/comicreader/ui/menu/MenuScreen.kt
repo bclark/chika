@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chakra.comicreader.data.settings.AppSettings
 import com.chakra.comicreader.data.smb.SmbClient
+import androidx.compose.material3.Surface
 import com.chakra.comicreader.ui.brand.ChikaWordmark
 import com.chakra.comicreader.ui.brand.OchreBadge
 import com.chakra.comicreader.ui.brand.comicShadow
@@ -60,6 +61,8 @@ import com.chakra.comicreader.ui.theme.CreamMuted
 import com.chakra.comicreader.ui.theme.Crimson
 import com.chakra.comicreader.ui.theme.Ink
 import com.chakra.comicreader.ui.theme.InkSoft
+import com.chakra.comicreader.ui.theme.LeafPrimary
+import com.chakra.comicreader.ui.theme.LeafSecondary
 import com.chakra.comicreader.ui.theme.Ochre
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -97,25 +100,25 @@ fun MenuScreen(
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DONATION_URL)))
     }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.matchParentSize().halftone(Crimson, alpha = 0.05f))
-
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 8.dp, bottom = 28.dp),
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // App Bar: leaf_primary (#1C3A27) anchors the brand at the top of the screen
+        Surface(
+            color = LeafPrimary,
+            modifier = Modifier.fillMaxWidth(),
+            shadowElevation = 3.dp,
         ) {
-            // Header: back + title.
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(
                     Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(Cream.copy(alpha = 0.12f))
+                        .background(Cream.copy(alpha = 0.14f))
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -127,6 +130,19 @@ fun MenuScreen(
                 Spacer(Modifier.size(14.dp))
                 OchreBadge("MENU")
             }
+        }
+
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            Box(Modifier.matchParentSize().halftone(LeafSecondary, alpha = 0.05f))
+
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 16.dp, bottom = 28.dp),
+            ) {
 
             Spacer(Modifier.size(28.dp))
 
@@ -323,7 +339,7 @@ fun MenuScreen(
             OchreBadge("VERSION $version")
             Spacer(Modifier.size(14.dp))
             Text(
-                "A comic reader for Android & iOS",
+                "A comic reader for Android",
                 fontFamily = Archivo,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
@@ -411,6 +427,7 @@ fun MenuScreen(
             )
         }
     }
+}
 }
 
 @Composable

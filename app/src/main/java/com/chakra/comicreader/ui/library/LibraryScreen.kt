@@ -53,11 +53,14 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -103,12 +106,20 @@ import com.chakra.comicreader.ui.brand.comicShadow
 import com.chakra.comicreader.ui.brand.halftone
 import com.chakra.comicreader.ui.theme.Anton
 import com.chakra.comicreader.ui.theme.Archivo
+import com.chakra.comicreader.ui.theme.ComicRose
 import com.chakra.comicreader.ui.theme.Cream
 import com.chakra.comicreader.ui.theme.CreamMuted
 import com.chakra.comicreader.ui.theme.Crimson
+import com.chakra.comicreader.ui.theme.DeepInk
+import com.chakra.comicreader.ui.theme.DeepInkSurface
 import com.chakra.comicreader.ui.theme.Ink
 import com.chakra.comicreader.ui.theme.InkSoft
+import com.chakra.comicreader.ui.theme.LeafAccent
+import com.chakra.comicreader.ui.theme.LeafPrimary
+import com.chakra.comicreader.ui.theme.LeafSecondary
 import com.chakra.comicreader.ui.theme.Ochre
+import com.chakra.comicreader.ui.theme.PaperWhite
+import com.chakra.comicreader.ui.theme.PaperWhiteMuted
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -180,161 +191,163 @@ fun LibraryScreen(
     val horizontalSpacing = if (actualColumns >= 4) 12.dp else 16.dp
     val verticalSpacing = if (actualColumns >= 4) 14.dp else 18.dp
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // Subtle full-bleed halftone wash + an action-burst behind the header.
-        Box(Modifier.matchParentSize().halftone(Crimson, alpha = 0.05f))
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 10.dp)
-                .size(180.dp)
-                .clip(StarburstShape)
-                .background(Crimson.copy(alpha = 0.14f)),
-        )
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(actualColumns),
-            state = gridState,
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 48.dp),
-            horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
-            verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // App Bar & Toolbars: leaf_primary (#1C3A27) anchors the brand at the top of the screen
+        Surface(
+            color = LeafPrimary,
+            modifier = Modifier.fillMaxWidth(),
+            shadowElevation = 3.dp,
         ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Column(
-                    Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 4.dp),
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 10.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    ChikaWordmark()
                     Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        ChikaWordmark()
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        Box(
+                            Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (isSearchOpen) Ochre else PaperWhite.copy(alpha = 0.14f))
+                                .clickable {
+                                    isSearchOpen = !isSearchOpen
+                                    if (!isSearchOpen) {
+                                        viewModel.clearSearch()
+                                        focusManager.clearFocus()
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Box(
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isSearchOpen) Ochre else Cream.copy(alpha = 0.10f))
-                                    .clickable {
-                                        isSearchOpen = !isSearchOpen
-                                        if (!isSearchOpen) {
-                                            viewModel.clearSearch()
-                                            focusManager.clearFocus()
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = "Search",
-                                    tint = if (isSearchOpen) Ink else Cream,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                            Box(
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(Cream.copy(alpha = 0.10f))
-                                    .clickable(onClick = onOpenMenu),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    Icons.Default.Menu,
-                                    contentDescription = "Menu",
-                                    tint = Cream,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = if (isSearchOpen) Ink else PaperWhite,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Box(
+                            Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(PaperWhite.copy(alpha = 0.14f))
+                                .clickable(onClick = onOpenMenu),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Default.Menu,
+                                contentDescription = "Menu",
+                                tint = PaperWhite,
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
+                }
 
-                    AnimatedVisibility(
-                        visible = isSearchOpen,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
+                AnimatedVisibility(
+                    visible = isSearchOpen,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 4.dp)
+                            .comicShadow(offset = 3.dp, color = Color(0xB3000000))
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(DeepInkSurface)
+                            .border(
+                                width = 2.dp,
+                                color = if (isSearchFocused) Ochre else DeepInk,
+                                shape = RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp, bottom = 4.dp)
-                                .comicShadow(offset = 3.dp, color = Color(0xB3000000))
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(InkSoft)
-                                .border(
-                                    width = 2.dp,
-                                    color = if (isSearchFocused) Ochre else Ink,
-                                    shape = RoundedCornerShape(6.dp),
-                                )
-                                .padding(horizontal = 12.dp, vertical = 9.dp),
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = null,
-                                    tint = if (isSearchFocused) Ochre else CreamMuted,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                                BasicTextField(
-                                    value = searchQuery,
-                                    onValueChange = { viewModel.setSearchQuery(it) },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .focusRequester(focusRequester)
-                                        .onFocusChanged { isSearchFocused = it.isFocused },
-                                    singleLine = true,
-                                    textStyle = TextStyle(
-                                        fontFamily = Archivo,
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 14.sp,
-                                        color = Cream,
-                                    ),
-                                    cursorBrush = SolidColor(Ochre),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                                    decorationBox = { innerTextField ->
-                                        if (searchQuery.isEmpty()) {
-                                            Text(
-                                                "SEARCH COMICS BY TITLE…",
-                                                fontFamily = Archivo,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 12.sp,
-                                                color = CreamMuted.copy(alpha = 0.55f),
-                                            )
-                                        }
-                                        innerTextField()
-                                    },
-                                )
-                                if (searchQuery.isNotEmpty()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                            .background(Cream.copy(alpha = 0.12f))
-                                            .clickable { viewModel.clearSearch() },
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "Clear search",
-                                            tint = Cream,
-                                            modifier = Modifier.size(14.dp),
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = if (isSearchFocused) Ochre else CreamMuted,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { viewModel.setSearchQuery(it) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(focusRequester)
+                                    .onFocusChanged { isSearchFocused = it.isFocused },
+                                singleLine = true,
+                                textStyle = TextStyle(
+                                    fontFamily = Archivo,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    color = PaperWhite,
+                                ),
+                                cursorBrush = SolidColor(Ochre),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                                decorationBox = { innerTextField ->
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            "SEARCH COMICS BY TITLE…",
+                                            fontFamily = Archivo,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 12.sp,
+                                            color = CreamMuted.copy(alpha = 0.55f),
                                         )
                                     }
+                                    innerTextField()
+                                },
+                            )
+                            if (searchQuery.isNotEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .background(PaperWhite.copy(alpha = 0.12f))
+                                        .clickable { viewModel.clearSearch() },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Clear search",
+                                        tint = PaperWhite,
+                                        modifier = Modifier.size(14.dp),
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            // Subtle full-bleed halftone wash
+            Box(Modifier.matchParentSize().halftone(LeafSecondary, alpha = 0.05f))
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(actualColumns),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 96.dp),
+                horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
+                verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+            ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Row(
                     Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp),
@@ -486,90 +499,114 @@ fun LibraryScreen(
             }
         }
 
+        ExtendedFloatingActionButton(
+            onClick = { if (!importing) showSourceDialog = true },
+            containerColor = LeafAccent,
+            contentColor = DeepInk,
+            elevation = FloatingActionButtonDefaults.elevation(6.dp),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(20.dp),
+            icon = {
+                Icon(Icons.Default.Add, contentDescription = "Add comic", tint = DeepInk)
+            },
+            text = {
+                Text(
+                    "ADD COMIC",
+                    fontFamily = Anton,
+                    fontSize = 14.sp,
+                    color = DeepInk,
+                    letterSpacing = 0.6.sp,
+                )
+            },
+        )
+
         SnackbarHost(
             snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
         )
     }
+}
 
-    if (showSourceDialog) {
-        AlertDialog(
-            onDismissRequest = { showSourceDialog = false },
-            title = { Text("Load comic", fontFamily = Anton, color = Cream) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Crimson)
-                            .clickable {
-                                showSourceDialog = false
-                                picker.launch(arrayOf("*/*"))
-                            }
-                            .padding(vertical = 12.dp, horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        Text("FROM DEVICE (FILES)", fontFamily = Anton, fontSize = 14.sp, color = Cream)
-                    }
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Ink)
-                            .border(1.5.dp, Crimson, RoundedCornerShape(4.dp))
-                            .clickable {
-                                showSourceDialog = false
-                                folderPicker.launch(null)
-                            }
-                            .padding(vertical = 12.dp, horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        Text("FROM DEVICE (FOLDER)", fontFamily = Anton, fontSize = 14.sp, color = Cream)
-                    }
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Ochre)
-                            .clickable {
-                                showSourceDialog = false
-                                if (viewModel.hasSmbConfig) {
-                                    onOpenDrive()
-                                } else {
-                                    viewModel.showMessage("Configure your SMB drive in Menu first.")
-                                    onOpenMenu()
-                                }
-                            }
-                            .padding(vertical = 12.dp, horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        Text("FROM SMB DRIVE", fontFamily = Anton, fontSize = 14.sp, color = Ink)
-                    }
+if (showSourceDialog) {
+    AlertDialog(
+        onDismissRequest = { showSourceDialog = false },
+        title = { Text("Load comic", fontFamily = Anton, color = PaperWhite) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(LeafPrimary)
+                        .clickable {
+                            showSourceDialog = false
+                            picker.launch(arrayOf("*/*"))
+                        }
+                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text("FROM DEVICE (FILES)", fontFamily = Anton, fontSize = 14.sp, color = PaperWhite)
                 }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showSourceDialog = false }) { Text("CANCEL", color = CreamMuted) }
-            },
-            containerColor = InkSoft,
-        )
-    }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(DeepInkSurface)
+                        .border(1.5.dp, LeafSecondary, RoundedCornerShape(4.dp))
+                        .clickable {
+                            showSourceDialog = false
+                            folderPicker.launch(null)
+                        }
+                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text("FROM DEVICE (FOLDER)", fontFamily = Anton, fontSize = 14.sp, color = PaperWhite)
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(LeafAccent)
+                        .clickable {
+                            showSourceDialog = false
+                            if (viewModel.hasSmbConfig) {
+                                onOpenDrive()
+                            } else {
+                                viewModel.showMessage("Configure your SMB drive in Menu first.")
+                                onOpenMenu()
+                            }
+                        }
+                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text("FROM SMB DRIVE", fontFamily = Anton, fontSize = 14.sp, color = DeepInk)
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = { showSourceDialog = false }) { Text("CANCEL", color = PaperWhiteMuted) }
+        },
+        containerColor = DeepInkSurface,
+    )
+}
 
-    pendingDelete?.let { comic ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text("Remove comic?", fontFamily = Anton) },
-            text = { Text("This removes the imported copy. The original file is untouched.") },
-            confirmButton = {
-                TextButton(onClick = { viewModel.deleteComic(comic.id); pendingDelete = null }) {
-                    Text("DELETE", color = Crimson, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("CANCEL") } },
-            containerColor = InkSoft,
-        )
-    }
+pendingDelete?.let { comic ->
+    AlertDialog(
+        onDismissRequest = { pendingDelete = null },
+        title = { Text("Remove comic?", fontFamily = Anton, color = PaperWhite) },
+        text = { Text("This removes the imported copy. The original file is untouched.", color = PaperWhiteMuted) },
+        confirmButton = {
+            TextButton(onClick = { viewModel.deleteComic(comic.id); pendingDelete = null }) {
+                Text("DELETE", color = ComicRose, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("CANCEL", color = PaperWhiteMuted) } },
+        containerColor = DeepInkSurface,
+    )
+}
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -674,23 +711,25 @@ fun SmbDriveScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.matchParentSize().halftone(Crimson, alpha = 0.05f))
-
-        Column(
-            Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(top = 8.dp, bottom = 16.dp),
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // App Bar & Toolbars: leaf_primary (#1C3A27) anchors the brand at the top of the screen
+        Surface(
+            color = LeafPrimary,
+            modifier = Modifier.fillMaxWidth(),
+            shadowElevation = 3.dp,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(
                     Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(Cream.copy(alpha = 0.12f))
+                        .background(PaperWhite.copy(alpha = 0.14f))
                         .clickable {
                             if (selectedCount > 0) {
                                 selectedPaths = emptySet()
@@ -705,7 +744,7 @@ fun SmbDriveScreen(
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Cream,
+                        tint = PaperWhite,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -717,239 +756,251 @@ fun SmbDriveScreen(
                             path,
                             fontFamily = Archivo,
                             fontSize = 11.sp,
-                            color = CreamMuted,
+                            color = PaperWhiteMuted,
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
                 }
             }
+        }
 
-            if (fileEntries.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp, bottom = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = if (selectedCount > 0) "$selectedCount OF $totalFiles SELECTED" else "$totalFiles ${if (totalFiles == 1) "COMIC" else "COMICS"}",
-                        fontFamily = Archivo,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        color = if (selectedCount > 0) Ochre else CreamMuted,
-                    )
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            Box(Modifier.matchParentSize().halftone(LeafSecondary, alpha = 0.05f))
+
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 8.dp, bottom = 16.dp),
+            ) {
+                if (fileEntries.isNotEmpty()) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (selectedCount > 0 && !allSelected) {
+                        Text(
+                            text = if (selectedCount > 0) "$selectedCount OF $totalFiles SELECTED" else "$totalFiles ${if (totalFiles == 1) "COMIC" else "COMICS"}",
+                            fontFamily = Archivo,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp,
+                            color = if (selectedCount > 0) LeafAccent else PaperWhiteMuted,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (selectedCount > 0 && !allSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(DeepInkSurface)
+                                        .border(1.dp, DeepInk, RoundedCornerShape(3.dp))
+                                        .clickable { selectedPaths = emptySet() }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        "CLEAR",
+                                        fontFamily = Anton,
+                                        fontSize = 11.sp,
+                                        color = PaperWhiteMuted,
+                                    )
+                                }
+                            }
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(3.dp))
-                                    .background(InkSoft)
-                                    .border(1.dp, Ink, RoundedCornerShape(3.dp))
-                                    .clickable { selectedPaths = emptySet() }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    .background(if (allSelected) LeafAccent else PaperWhite.copy(alpha = 0.14f))
+                                    .clickable {
+                                        selectedPaths = if (allSelected) {
+                                            emptySet()
+                                        } else {
+                                            fileEntries.map { it.path }.toSet()
+                                        }
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    "CLEAR",
+                                    text = if (allSelected) "DESELECT ALL" else "SELECT ALL",
                                     fontFamily = Anton,
                                     fontSize = 11.sp,
-                                    color = CreamMuted,
+                                    color = if (allSelected) DeepInk else PaperWhite,
                                 )
                             }
                         }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(if (allSelected) Ochre else Cream.copy(alpha = 0.12f))
-                                .clickable {
-                                    selectedPaths = if (allSelected) {
-                                        emptySet()
-                                    } else {
-                                        fileEntries.map { it.path }.toSet()
-                                    }
-                                }
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
-                            contentAlignment = Alignment.Center,
+                    }
+                }
+
+                Spacer(Modifier.size(12.dp))
+
+                if (importing) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(DeepInkSurface)
+                            .border(2.dp, LeafAccent, RoundedCornerShape(6.dp))
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
+                            CircularProgressIndicator(
+                                color = LeafAccent,
+                                strokeWidth = 2.5.dp,
+                                modifier = Modifier.size(20.dp),
+                            )
                             Text(
-                                text = if (allSelected) "DESELECT ALL" else "SELECT ALL",
+                                text = importStatus?.uppercase()
+                                    ?: if (importProgress > 0f) "LOADING COMIC… ${(importProgress * 100).toInt()}%"
+                                    else "LOADING COMIC…",
                                 fontFamily = Anton,
-                                fontSize = 11.sp,
-                                color = if (allSelected) Ink else Cream,
+                                fontSize = 13.sp,
+                                color = PaperWhite,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
+                        LinearProgressIndicator(
+                            progress = { if (importProgress > 0f) importProgress else 0.05f },
+                            color = LeafAccent,
+                            trackColor = DeepInk,
+                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                        )
                     }
+                    Spacer(Modifier.size(12.dp))
                 }
-            }
 
-            Spacer(Modifier.size(12.dp))
-
-            if (importing) {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(InkSoft)
-                        .border(2.dp, Ochre, RoundedCornerShape(6.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if (loading) {
                         CircularProgressIndicator(
-                            color = Ochre,
-                            strokeWidth = 2.5.dp,
-                            modifier = Modifier.size(20.dp),
+                            color = LeafAccent,
+                            modifier = Modifier.align(Alignment.Center),
                         )
-                        Text(
-                            text = importStatus?.uppercase()
-                                ?: if (importProgress > 0f) "LOADING COMIC… ${(importProgress * 100).toInt()}%"
-                                else "LOADING COMIC…",
-                            fontFamily = Anton,
-                            fontSize = 13.sp,
-                            color = Cream,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    LinearProgressIndicator(
-                        progress = { if (importProgress > 0f) importProgress else 0.05f },
-                        color = Ochre,
-                        trackColor = Ink,
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                    )
-                }
-                Spacer(Modifier.size(12.dp))
-            }
-
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                if (loading) {
-                    CircularProgressIndicator(
-                        color = Ochre,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                    ) {
-                        if (path.isNotEmpty()) {
-                            item {
-                                val parent = path.substringBeforeLast('\\', "")
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(bottom = 24.dp),
+                        ) {
+                            if (path.isNotEmpty()) {
+                                item {
+                                    val parent = path.substringBeforeLast('\\', "")
+                                    SmbRow(
+                                        name = ".. (Up)",
+                                        isDirectory = true,
+                                        onClick = {
+                                            selectedPaths = emptySet()
+                                            viewModel.loadSmbDirectory(parent)
+                                        },
+                                    )
+                                }
+                            }
+                            if (entries.isEmpty()) {
+                                item {
+                                    Text(
+                                        "No folders or comics found here.",
+                                        fontFamily = Archivo,
+                                        fontSize = 13.sp,
+                                        color = PaperWhiteMuted,
+                                        modifier = Modifier.padding(vertical = 12.dp),
+                                    )
+                                }
+                            }
+                            items(entries, key = { it.path }) { entry ->
+                                val isSelected = entry.path in selectedPaths
                                 SmbRow(
-                                    name = ".. (Up)",
-                                    isDirectory = true,
+                                    name = entry.name,
+                                    isDirectory = entry.isDirectory,
+                                    isSelected = isSelected,
                                     onClick = {
-                                        selectedPaths = emptySet()
-                                        viewModel.loadSmbDirectory(parent)
+                                        if (entry.isDirectory) {
+                                            selectedPaths = emptySet()
+                                            viewModel.loadSmbDirectory(entry.path)
+                                        } else if (!importing) {
+                                            selectedPaths = if (isSelected) {
+                                                selectedPaths - entry.path
+                                            } else {
+                                                selectedPaths + entry.path
+                                            }
+                                        }
                                     },
                                 )
                             }
                         }
-                        if (entries.isEmpty()) {
-                            item {
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = selectedCount > 0 && !importing,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp)
+                            .comicShadow(offset = 3.dp, color = Color(0xB3000000))
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(DeepInkSurface)
+                            .border(2.dp, LeafAccent, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
                                 Text(
-                                    "No folders or comics found here.",
+                                    text = "$selectedCount ${if (selectedCount == 1) "COMIC" else "COMICS"} SELECTED",
+                                    fontFamily = Anton,
+                                    fontSize = 15.sp,
+                                    color = PaperWhite,
+                                )
+                                Text(
+                                    text = "Ready to download into your library",
                                     fontFamily = Archivo,
+                                    fontSize = 11.sp,
+                                    color = PaperWhiteMuted,
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(LeafAccent)
+                                    .clickable {
+                                        val toImport = fileEntries.filter { it.path in selectedPaths }
+                                        viewModel.importSmbComics(toImport) {
+                                            onBack()
+                                        }
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 9.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = if (selectedCount == 1) "IMPORT COMIC" else "IMPORT ALL ($selectedCount)",
+                                    fontFamily = Anton,
                                     fontSize = 13.sp,
-                                    color = CreamMuted,
-                                    modifier = Modifier.padding(vertical = 12.dp),
+                                    color = DeepInk,
                                 )
                             }
                         }
-                        items(entries, key = { it.path }) { entry ->
-                            val isSelected = entry.path in selectedPaths
-                            SmbRow(
-                                name = entry.name,
-                                isDirectory = entry.isDirectory,
-                                isSelected = isSelected,
-                                onClick = {
-                                    if (entry.isDirectory) {
-                                        selectedPaths = emptySet()
-                                        viewModel.loadSmbDirectory(entry.path)
-                                    } else if (!importing) {
-                                        selectedPaths = if (isSelected) {
-                                            selectedPaths - entry.path
-                                        } else {
-                                            selectedPaths + entry.path
-                                        }
-                                    }
-                                },
-                            )
-                        }
                     }
                 }
             }
 
-            AnimatedVisibility(
-                visible = selectedCount > 0 && !importing,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp)
-                        .comicShadow(offset = 3.dp, color = Color(0xB3000000))
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(InkSoft)
-                        .border(2.dp, Ochre, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column {
-                            Text(
-                                text = "$selectedCount ${if (selectedCount == 1) "COMIC" else "COMICS"} SELECTED",
-                                fontFamily = Anton,
-                                fontSize = 15.sp,
-                                color = Cream,
-                            )
-                            Text(
-                                text = "Ready to download into your library",
-                                fontFamily = Archivo,
-                                fontSize = 11.sp,
-                                color = CreamMuted,
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Ochre)
-                                .clickable {
-                                    val toImport = fileEntries.filter { it.path in selectedPaths }
-                                    viewModel.importSmbComics(toImport) {
-                                        onBack()
-                                    }
-                                }
-                                .padding(horizontal = 16.dp, vertical = 9.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = if (selectedCount == 1) "IMPORT COMIC" else "IMPORT ALL ($selectedCount)",
-                                fontFamily = Anton,
-                                fontSize = 13.sp,
-                                color = Ink,
-                            )
-                        }
-                    }
-                }
-            }
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+            )
         }
-
-        SnackbarHost(
-            snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
-        )
     }
 }
 
@@ -977,7 +1028,7 @@ private fun AddTile(
             .combinedClickable(onClick = onClick, onLongClick = {})
             .drawBehind {
                 drawRoundRect(
-                    color = CreamMuted,
+                    color = PaperWhiteMuted.copy(alpha = 0.5f),
                     style = Stroke(
                         width = strokeWidth.toPx(),
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f)),
@@ -985,7 +1036,7 @@ private fun AddTile(
                     cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
                 )
             }
-            .halftone(Ochre, alpha = 0.10f),
+            .halftone(LeafAccent, alpha = 0.10f),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -994,11 +1045,11 @@ private fun AddTile(
             verticalArrangement = Arrangement.spacedBy(spacing),
         ) {
             Box(
-                Modifier.size(starburstSize).clip(StarburstShape).background(Crimson),
+                Modifier.size(starburstSize).clip(StarburstShape).background(LeafAccent),
                 contentAlignment = Alignment.Center,
             ) {
-                if (importing) CircularProgressIndicator(color = Cream, modifier = Modifier.size(iconSize))
-                else Icon(Icons.Default.Add, contentDescription = "Load comic", tint = Cream, modifier = Modifier.size(iconSize))
+                if (importing) CircularProgressIndicator(color = DeepInk, modifier = Modifier.size(iconSize))
+                else Icon(Icons.Default.Add, contentDescription = "Load comic", tint = DeepInk, modifier = Modifier.size(iconSize))
             }
             Text(
                 if (importing && status != null) status.uppercase()
@@ -1007,7 +1058,7 @@ private fun AddTile(
                 else "LOAD COMIC",
                 fontFamily = Anton,
                 fontSize = fontSize,
-                color = Cream,
+                color = PaperWhite,
                 maxLines = 2,
                 textAlign = TextAlign.Center,
             )
@@ -1015,14 +1066,14 @@ private fun AddTile(
                 if (progress > 0f) {
                     LinearProgressIndicator(
                         progress = { progress },
-                        color = Ochre,
-                        trackColor = Ink,
+                        color = LeafAccent,
+                        trackColor = DeepInk,
                         modifier = Modifier.fillMaxWidth().height(if (columns >= 4) 4.dp else 6.dp).clip(RoundedCornerShape(3.dp)),
                     )
                 } else {
                     LinearProgressIndicator(
-                        color = Ochre,
-                        trackColor = Ink,
+                        color = LeafAccent,
+                        trackColor = DeepInk,
                         modifier = Modifier.fillMaxWidth().height(if (columns >= 4) 4.dp else 6.dp).clip(RoundedCornerShape(3.dp)),
                     )
                 }
@@ -1038,8 +1089,8 @@ private fun SmbRow(
     isSelected: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val borderColor = if (isSelected) Ochre else Color.Transparent
-    val bgColor = if (isSelected) Ochre.copy(alpha = 0.14f) else Ink
+    val borderColor = if (isSelected) LeafAccent else DeepInk
+    val bgColor = if (isSelected) LeafAccent.copy(alpha = 0.18f) else DeepInkSurface
 
     Row(
         Modifier
@@ -1059,7 +1110,7 @@ private fun SmbRow(
         Icon(
             if (isDirectory) Icons.Default.Folder else Icons.Default.Description,
             contentDescription = null,
-            tint = if (isDirectory) Ochre else if (isSelected) Ochre else Cream,
+            tint = if (isDirectory) LeafAccent else if (isSelected) LeafAccent else PaperWhite,
             modifier = Modifier.size(18.dp),
         )
         Text(
@@ -1067,7 +1118,7 @@ private fun SmbRow(
             fontFamily = Archivo,
             fontWeight = if (isDirectory || isSelected) FontWeight.Bold else FontWeight.Medium,
             fontSize = 13.sp,
-            color = Cream,
+            color = PaperWhite,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -1076,7 +1127,7 @@ private fun SmbRow(
             Icon(
                 Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
-                tint = CreamMuted.copy(alpha = 0.4f),
+                tint = PaperWhiteMuted.copy(alpha = 0.4f),
                 modifier = Modifier
                     .size(14.dp)
                     .graphicsLayer(rotationZ = 180f),
@@ -1087,10 +1138,10 @@ private fun SmbRow(
                 modifier = Modifier
                     .size(20.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(if (isSelected) Ochre else Color.Transparent)
+                    .background(if (isSelected) LeafAccent else DeepInk)
                     .border(
                         width = 1.5.dp,
-                        color = if (isSelected) Ochre else CreamMuted.copy(alpha = 0.45f),
+                        color = if (isSelected) LeafAccent else PaperWhiteMuted.copy(alpha = 0.45f),
                         shape = RoundedCornerShape(3.dp),
                     ),
                 contentAlignment = Alignment.Center,
@@ -1099,7 +1150,7 @@ private fun SmbRow(
                     Icon(
                         Icons.Default.Check,
                         contentDescription = "Selected",
-                        tint = Ink,
+                        tint = DeepInk,
                         modifier = Modifier.size(14.dp),
                     )
                 }
