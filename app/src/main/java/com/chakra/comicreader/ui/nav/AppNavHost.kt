@@ -13,12 +13,14 @@ import androidx.navigation.navArgument
 import com.chakra.comicreader.ComicReaderApp
 import com.chakra.comicreader.ui.library.LibraryScreen
 import com.chakra.comicreader.ui.library.LibraryViewModel
+import com.chakra.comicreader.ui.library.SmbDriveScreen
 import com.chakra.comicreader.ui.menu.MenuScreen
 import com.chakra.comicreader.ui.reader.ReaderScreen
 import com.chakra.comicreader.ui.reader.ReaderViewModel
 
 private object Routes {
     const val LIBRARY = "library"
+    const val DRIVE = "drive"
     const val READER = "reader/{comicId}"
     const val MENU = "menu"
     fun reader(comicId: Long) = "reader/$comicId"
@@ -28,14 +30,24 @@ private object Routes {
 fun AppNavHost() {
     val navController = rememberNavController()
     val app = LocalContext.current.applicationContext as ComicReaderApp
+    val libraryVm: LibraryViewModel = viewModel(factory = LibraryViewModel.factory(app))
 
     NavHost(navController = navController, startDestination = Routes.LIBRARY) {
         composable(Routes.LIBRARY) {
-            val vm: LibraryViewModel = viewModel(factory = LibraryViewModel.factory(app))
             LibraryScreen(
-                viewModel = vm,
+                viewModel = libraryVm,
                 onOpenComic = { id -> navController.navigate(Routes.reader(id)) },
                 onOpenMenu = { navController.navigate(Routes.MENU) },
+                onOpenDrive = {
+                    libraryVm.loadSmbDirectory("")
+                    navController.navigate(Routes.DRIVE)
+                },
+            )
+        }
+        composable(Routes.DRIVE) {
+            SmbDriveScreen(
+                viewModel = libraryVm,
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.MENU) {
@@ -43,6 +55,7 @@ fun AppNavHost() {
             MenuScreen(
                 amoledTheme = amoled,
                 onSetAmoledTheme = app::setAmoledTheme,
+                settings = app.settings,
                 onBack = { navController.popBackStack() },
             )
         }

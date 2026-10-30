@@ -16,6 +16,7 @@ sevenzip = "Release-16.02-2.03"
 # 1.4.x ships 16 KB-aligned native libs
 litert = "1.4.2"
 documentFile = "1.0.1"
+smbj = "0.13.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,6 +40,7 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
 sevenzip = { group = "com.github.omicronapps", name = "7-Zip-JBinding-4Android", version.ref = "sevenzip" }
+smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
 tensorflow-lite = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
 
 [plugins]

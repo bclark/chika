@@ -81,6 +81,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
         // Compress the native libraries inside the APK (they ship uncompressed by default). This
         // keeps every ABI but shrinks the download — the libs are extracted at install time.
@@ -117,6 +118,7 @@ dependencies {
 
     implementation(libs.commons.compress)
     implementation(libs.sevenzip)
+    implementation(libs.smbj)
 
     implementation(libs.tensorflow.lite)
 }
