@@ -2,14 +2,30 @@ package com.chakra.comicreader.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/** Leaf brand palette. */
-val Ink = Color(0xFF17100E)
-val InkSoft = Color(0xFF2A201C)
-val Crimson = Color(0xFFD11F2D)
-val CrimsonBright = Color(0xFFE62534)
-val Maroon = Color(0xFF7C1620)
-val Cream = Color(0xFFF3E9D6)
-val Ochre = Color(0xFFE0A22B)
+/**
+ * Leaf brand palette.
+ */
+// Brand Primary & Secondary
+val LeafPrimary = Color(0xFF1C3A27)       // Forest Primary
+val LeafPrimaryDark = Color(0xFF122519)   // Deep Forest
+val LeafSecondary = Color(0xFF4A7C59)     // Sage Secondary
+val LeafAccent = Color(0xFFD4AF37)        // Accent Gold
 
-/** Muted cream for secondary metadata text on dark grounds. */
-val CreamMuted = Color(0x8CF3E9D6)
+// Interface and Support
+val ComicRose = Color(0xFF935B6D)         // Warm accent / label
+val PaperWhite = Color(0xFFF9F9FB)        // Light BG / Text
+val DeepInk = Color(0xFF14191C)           // Dark Mode BG
+val DeepInkSurface = Color(0xFF1E2529)    // Cards / bars in Dark Mode
+
+// Secondary / metadata text on dark grounds
+val PaperWhiteMuted = Color(0x8CF9F9FB)
+
+// Compatibility aliases for existing design components
+val Ink = DeepInk
+val InkSoft = DeepInkSurface
+val Crimson = LeafPrimary
+val CrimsonBright = LeafSecondary
+val Maroon = LeafPrimaryDark
+val Cream = PaperWhite
+val Ochre = LeafAccent
+val CreamMuted = PaperWhiteMuted

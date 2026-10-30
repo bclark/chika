@@ -98,7 +98,11 @@ import com.chakra.comicreader.ui.theme.Archivo
 import com.chakra.comicreader.ui.theme.Cream
 import com.chakra.comicreader.ui.theme.CreamMuted
 import com.chakra.comicreader.ui.theme.Crimson
+import com.chakra.comicreader.ui.theme.DeepInk
+import com.chakra.comicreader.ui.theme.DeepInkSurface
 import com.chakra.comicreader.ui.theme.Ink
+import com.chakra.comicreader.ui.theme.LeafAccent
+import com.chakra.comicreader.ui.theme.LeafPrimary
 import com.chakra.comicreader.ui.theme.Ochre
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -167,7 +171,7 @@ fun ReaderScreen(
         if (state.error == null && state.page != null) {
             Reticle(
                 modifier = Modifier.matchParentSize().padding(6.dp),
-                color = Crimson.copy(alpha = 0.45f),
+                color = LeafPrimary.copy(alpha = 0.55f),
                 inset = 6.dp,
                 length = 16.dp,
                 stroke = 2.dp,
@@ -184,7 +188,15 @@ fun ReaderScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Ink.copy(alpha = 0.94f), Color.Transparent)))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                LeafPrimary.copy(alpha = 0.98f),
+                                LeafPrimary.copy(alpha = 0.88f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    )
                     .statusBarsPadding()
                     .padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 18.dp),
             ) {
@@ -248,7 +260,7 @@ private fun PageScrubber(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Ink.copy(alpha = 0.97f))))
+            .background(Brush.verticalGradient(listOf(Color.Transparent, DeepInkSurface.copy(alpha = 0.98f))))
             .navigationBarsPadding()
             .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 12.dp),
     ) {
