@@ -49,6 +49,9 @@ class LibraryViewModel(
     private val _importProgress = MutableStateFlow(0f)
     val importProgress: StateFlow<Float> = _importProgress.asStateFlow()
 
+    private val _importStatus = MutableStateFlow<String?>(null)
+    val importStatus: StateFlow<String?> = _importStatus.asStateFlow()
+
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
@@ -63,15 +66,44 @@ class LibraryViewModel(
 
     val hasSmbConfig: Boolean get() = settings.hasSmbConfig
 
-    fun importComic(uri: Uri) {
+    fun importComic(uri: Uri) = importComics(listOf(uri))
+
+    fun importComics(uris: List<Uri>) {
+        if (uris.isEmpty()) return
         viewModelScope.launch {
             _importing.value = true
             _importProgress.value = 0f
-            val result = repository.importComic(uri) { _importProgress.value = it }
-            _importing.value = false
-            result.exceptionOrNull()?.let {
-                _message.value = it.message ?: "Import failed."
+            var importedCount = 0
+            var failedCount = 0
+            val total = uris.size
+            uris.forEachIndexed { index, uri ->
+                _importStatus.value = if (total > 1) "Importing ${index + 1} of $total…" else "Importing comic…"
+                val result = repository.importComic(uri) { fileProgress ->
+                    _importProgress.value = (index + fileProgress) / total
+                }
+                if (result.isSuccess) {
+                    importedCount++
+                } else {
+                    failedCount++
+                }
             }
+            _importing.value = false
+            _importProgress.value = 0f
+            _importStatus.value = null
+            if (failedCount == 0) {
+                _message.value = if (total == 1) "Imported 1 comic." else "Imported $importedCount comics."
+            } else {
+                _message.value = "Imported $importedCount of $total comics ($failedCount failed)."
+            }
+        }
+    }
+
+    fun importFolder(treeUri: Uri) {
+        val uris = repository.getUrisFromFolder(treeUri)
+        if (uris.isNotEmpty()) {
+            importComics(uris)
+        } else {
+            _message.value = "No comic files found in that folder."
         }
     }
 
@@ -86,15 +118,37 @@ class LibraryViewModel(
         }
     }
 
-    fun importSmbComic(entry: SmbEntry) {
+    fun importSmbComic(entry: SmbEntry, onFinished: () -> Unit = {}) =
+        importSmbComics(listOf(entry), onFinished)
+
+    fun importSmbComics(entries: List<SmbEntry>, onFinished: () -> Unit = {}) {
+        if (entries.isEmpty()) return
         viewModelScope.launch {
             _importing.value = true
             _importProgress.value = 0f
-            val result = repository.importSmbComic(entry) { _importProgress.value = it }
-            _importing.value = false
-            result.exceptionOrNull()?.let {
-                _message.value = it.message ?: "Import from drive failed."
+            var importedCount = 0
+            var failedCount = 0
+            val total = entries.size
+            entries.forEachIndexed { index, entry ->
+                _importStatus.value = if (total > 1) "Importing ${index + 1} of $total: ${entry.name}" else "Importing ${entry.name}…"
+                val result = repository.importSmbComic(entry) { fileProgress ->
+                    _importProgress.value = (index + fileProgress) / total
+                }
+                if (result.isSuccess) {
+                    importedCount++
+                } else {
+                    failedCount++
+                }
             }
+            _importing.value = false
+            _importProgress.value = 0f
+            _importStatus.value = null
+            if (failedCount == 0) {
+                _message.value = if (total == 1) "Imported 1 comic." else "Imported $importedCount comics."
+            } else {
+                _message.value = "Imported $importedCount of $total comics ($failedCount failed)."
+            }
+            onFinished()
         }
     }
 

@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
+import androidx.documentfile.provider.DocumentFile
 import com.chakra.comicreader.data.archive.ComicArchiveFactory
 import com.chakra.comicreader.data.archive.ComicFormat
 import com.chakra.comicreader.data.archive.UnsupportedComicException
@@ -43,6 +44,17 @@ class LibraryRepository(
 
     suspend fun setReadingDirection(id: Long, rightToLeft: Boolean) =
         dao.updateReadingDirection(id, rightToLeft)
+
+    /** Finds all supported comic files within a selected folder URI. */
+    fun getUrisFromFolder(treeUri: Uri): List<Uri> {
+        val root = DocumentFile.fromTreeUri(context, treeUri) ?: return emptyList()
+        val comicExtensions = setOf("cbz", "cbr", "pdf", "zip", "rar")
+        return root.listFiles()
+            .filter { doc ->
+                !doc.isDirectory && doc.name?.substringAfterLast('.', "")?.lowercase() in comicExtensions
+            }
+            .map { it.uri }
+    }
 
     /** Copies, validates, and indexes a picked comic. Returns the new row id, or an error. */
     suspend fun importComic(

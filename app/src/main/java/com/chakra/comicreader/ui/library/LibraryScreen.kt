@@ -45,6 +45,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
@@ -81,12 +82,14 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -122,6 +125,7 @@ fun LibraryScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val importing by viewModel.importing.collectAsStateWithLifecycle()
     val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
+    val importStatus by viewModel.importStatus.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val defaultRtl by viewModel.defaultRightToLeft.collectAsStateWithLifecycle()
     val libraryColumns by viewModel.libraryColumns.collectAsStateWithLifecycle()
@@ -158,8 +162,12 @@ fun LibraryScreen(
     val actualColumns = libraryColumns.coerceIn(2, availableColumns.last())
     val gridState = rememberLazyGridState()
 
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) viewModel.importComic(uri)
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (!uris.isNullOrEmpty()) viewModel.importComics(uris)
+    }
+
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
+        if (treeUri != null) viewModel.importFolder(treeUri)
     }
 
     LaunchedEffect(message) {
@@ -470,6 +478,7 @@ fun LibraryScreen(
                     AddTile(
                         importing = importing,
                         progress = importProgress,
+                        status = importStatus,
                         columns = actualColumns,
                         onClick = { if (!importing) showSourceDialog = true },
                     )
@@ -501,7 +510,22 @@ fun LibraryScreen(
                             .padding(vertical = 12.dp, horizontal = 16.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        Text("FROM DEVICE", fontFamily = Anton, fontSize = 14.sp, color = Cream)
+                        Text("FROM DEVICE (FILES)", fontFamily = Anton, fontSize = 14.sp, color = Cream)
+                    }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Ink)
+                            .border(1.5.dp, Crimson, RoundedCornerShape(4.dp))
+                            .clickable {
+                                showSourceDialog = false
+                                folderPicker.launch(null)
+                            }
+                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Text("FROM DEVICE (FOLDER)", fontFamily = Anton, fontSize = 14.sp, color = Cream)
                     }
                     Row(
                         Modifier
@@ -520,7 +544,7 @@ fun LibraryScreen(
                             .padding(vertical = 12.dp, horizontal = 16.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        Text("FROM DRIVE", fontFamily = Anton, fontSize = 14.sp, color = Ink)
+                        Text("FROM SMB DRIVE", fontFamily = Anton, fontSize = 14.sp, color = Ink)
                     }
                 }
             },
@@ -629,8 +653,19 @@ fun SmbDriveScreen(
     val path by viewModel.smbPath.collectAsStateWithLifecycle()
     val importing by viewModel.importing.collectAsStateWithLifecycle()
     val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
+    val importStatus by viewModel.importStatus.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var selectedPaths by remember(path, entries) { mutableStateOf(emptySet<String>()) }
+    val fileEntries = remember(entries) { entries.filter { !it.isDirectory } }
+    val selectedCount = selectedPaths.size
+    val totalFiles = fileEntries.size
+    val allSelected = totalFiles > 0 && selectedCount == totalFiles
+
+    BackHandler(enabled = selectedCount > 0 && !importing) {
+        selectedPaths = emptySet()
+    }
 
     LaunchedEffect(message) {
         message?.let {
@@ -657,7 +692,9 @@ fun SmbDriveScreen(
                         .clip(CircleShape)
                         .background(Cream.copy(alpha = 0.12f))
                         .clickable {
-                            if (path.isNotEmpty()) {
+                            if (selectedCount > 0) {
+                                selectedPaths = emptySet()
+                            } else if (path.isNotEmpty()) {
                                 viewModel.loadSmbDirectory(path.substringBeforeLast('\\', ""))
                             } else {
                                 onBack()
@@ -687,7 +724,69 @@ fun SmbDriveScreen(
                 }
             }
 
-            Spacer(Modifier.size(18.dp))
+            if (fileEntries.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, bottom = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = if (selectedCount > 0) "$selectedCount OF $totalFiles SELECTED" else "$totalFiles ${if (totalFiles == 1) "COMIC" else "COMICS"}",
+                        fontFamily = Archivo,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.5.sp,
+                        color = if (selectedCount > 0) Ochre else CreamMuted,
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (selectedCount > 0 && !allSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(InkSoft)
+                                    .border(1.dp, Ink, RoundedCornerShape(3.dp))
+                                    .clickable { selectedPaths = emptySet() }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "CLEAR",
+                                    fontFamily = Anton,
+                                    fontSize = 11.sp,
+                                    color = CreamMuted,
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(if (allSelected) Ochre else Cream.copy(alpha = 0.12f))
+                                .clickable {
+                                    selectedPaths = if (allSelected) {
+                                        emptySet()
+                                    } else {
+                                        fileEntries.map { it.path }.toSet()
+                                    }
+                                }
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = if (allSelected) "DESELECT ALL" else "SELECT ALL",
+                                fontFamily = Anton,
+                                fontSize = 11.sp,
+                                color = if (allSelected) Ink else Cream,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.size(12.dp))
 
             if (importing) {
                 Column(
@@ -695,6 +794,7 @@ fun SmbDriveScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(6.dp))
                         .background(InkSoft)
+                        .border(2.dp, Ochre, RoundedCornerShape(6.dp))
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -708,29 +808,24 @@ fun SmbDriveScreen(
                             modifier = Modifier.size(20.dp),
                         )
                         Text(
-                            if (importProgress > 0f) "LOADING COMIC… ${(importProgress * 100).toInt()}%"
-                            else "LOADING COMIC…",
+                            text = importStatus?.uppercase()
+                                ?: if (importProgress > 0f) "LOADING COMIC… ${(importProgress * 100).toInt()}%"
+                                else "LOADING COMIC…",
                             fontFamily = Anton,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             color = Cream,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    if (importProgress > 0f) {
-                        LinearProgressIndicator(
-                            progress = { importProgress },
-                            color = Ochre,
-                            trackColor = Ink,
-                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                        )
-                    } else {
-                        LinearProgressIndicator(
-                            color = Ochre,
-                            trackColor = Ink,
-                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                        )
-                    }
+                    LinearProgressIndicator(
+                        progress = { if (importProgress > 0f) importProgress else 0.05f },
+                        color = Ochre,
+                        trackColor = Ink,
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                    )
                 }
-                Spacer(Modifier.size(14.dp))
+                Spacer(Modifier.size(12.dp))
             }
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -750,7 +845,10 @@ fun SmbDriveScreen(
                                 SmbRow(
                                     name = ".. (Up)",
                                     isDirectory = true,
-                                    onClick = { viewModel.loadSmbDirectory(parent) },
+                                    onClick = {
+                                        selectedPaths = emptySet()
+                                        viewModel.loadSmbDirectory(parent)
+                                    },
                                 )
                             }
                         }
@@ -766,17 +864,81 @@ fun SmbDriveScreen(
                             }
                         }
                         items(entries, key = { it.path }) { entry ->
+                            val isSelected = entry.path in selectedPaths
                             SmbRow(
                                 name = entry.name,
                                 isDirectory = entry.isDirectory,
+                                isSelected = isSelected,
                                 onClick = {
                                     if (entry.isDirectory) {
+                                        selectedPaths = emptySet()
                                         viewModel.loadSmbDirectory(entry.path)
                                     } else if (!importing) {
-                                        viewModel.importSmbComic(entry)
-                                        onBack()
+                                        selectedPaths = if (isSelected) {
+                                            selectedPaths - entry.path
+                                        } else {
+                                            selectedPaths + entry.path
+                                        }
                                     }
                                 },
+                            )
+                        }
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = selectedCount > 0 && !importing,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                        .comicShadow(offset = 3.dp, color = Color(0xB3000000))
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(InkSoft)
+                        .border(2.dp, Ochre, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(
+                                text = "$selectedCount ${if (selectedCount == 1) "COMIC" else "COMICS"} SELECTED",
+                                fontFamily = Anton,
+                                fontSize = 15.sp,
+                                color = Cream,
+                            )
+                            Text(
+                                text = "Ready to download into your library",
+                                fontFamily = Archivo,
+                                fontSize = 11.sp,
+                                color = CreamMuted,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Ochre)
+                                .clickable {
+                                    val toImport = fileEntries.filter { it.path in selectedPaths }
+                                    viewModel.importSmbComics(toImport) {
+                                        onBack()
+                                    }
+                                }
+                                .padding(horizontal = 16.dp, vertical = 9.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = if (selectedCount == 1) "IMPORT COMIC" else "IMPORT ALL ($selectedCount)",
+                                fontFamily = Anton,
+                                fontSize = 13.sp,
+                                color = Ink,
                             )
                         }
                     }
@@ -796,6 +958,7 @@ fun SmbDriveScreen(
 private fun AddTile(
     importing: Boolean,
     progress: Float,
+    status: String? = null,
     columns: Int = 2,
     onClick: () -> Unit,
 ) {
@@ -838,12 +1001,15 @@ private fun AddTile(
                 else Icon(Icons.Default.Add, contentDescription = "Load comic", tint = Cream, modifier = Modifier.size(iconSize))
             }
             Text(
-                if (importing && progress > 0f) "LOADING ${(progress * 100).toInt()}%"
+                if (importing && status != null) status.uppercase()
+                else if (importing && progress > 0f) "LOADING ${(progress * 100).toInt()}%"
                 else if (importing) "LOADING…"
                 else "LOAD COMIC",
                 fontFamily = Anton,
                 fontSize = fontSize,
                 color = Cream,
+                maxLines = 2,
+                textAlign = TextAlign.Center,
             )
             if (importing) {
                 if (progress > 0f) {
@@ -866,12 +1032,25 @@ private fun AddTile(
 }
 
 @Composable
-private fun SmbRow(name: String, isDirectory: Boolean, onClick: () -> Unit) {
+private fun SmbRow(
+    name: String,
+    isDirectory: Boolean,
+    isSelected: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val borderColor = if (isSelected) Ochre else Color.Transparent
+    val bgColor = if (isSelected) Ochre.copy(alpha = 0.14f) else Ink
+
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(4.dp))
-            .background(Ink)
+            .background(bgColor)
+            .border(
+                width = if (isSelected) 1.5.dp else 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(4.dp),
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -880,18 +1059,52 @@ private fun SmbRow(name: String, isDirectory: Boolean, onClick: () -> Unit) {
         Icon(
             if (isDirectory) Icons.Default.Folder else Icons.Default.Description,
             contentDescription = null,
-            tint = if (isDirectory) Ochre else Cream,
+            tint = if (isDirectory) Ochre else if (isSelected) Ochre else Cream,
             modifier = Modifier.size(18.dp),
         )
         Text(
             name,
             fontFamily = Archivo,
-            fontWeight = if (isDirectory) FontWeight.Bold else FontWeight.Medium,
+            fontWeight = if (isDirectory || isSelected) FontWeight.Bold else FontWeight.Medium,
             fontSize = 13.sp,
             color = Cream,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
+        if (isDirectory) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                tint = CreamMuted.copy(alpha = 0.4f),
+                modifier = Modifier
+                    .size(14.dp)
+                    .graphicsLayer(rotationZ = 180f),
+            )
+        } else {
+            // Retro comic checkbox
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(if (isSelected) Ochre else Color.Transparent)
+                    .border(
+                        width = 1.5.dp,
+                        color = if (isSelected) Ochre else CreamMuted.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(3.dp),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isSelected) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = Ink,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
