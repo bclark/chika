@@ -115,20 +115,20 @@ fun Reticle(
 
 /* ---- Logo system --------------------------------------------------------------- */
 
-/** "CHI·KA / CHITRA KATHA" lockup (cream + crimson Anton over an Archivo kicker). */
+/** "LE·AF / COMIC READER" lockup (cream + crimson Anton over an Archivo kicker). */
 @Composable
 fun ChikaWordmark(modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(
             text = buildAnnotatedString {
-                withStyle(SpanStyle(color = Cream)) { append("CHI") }
-                withStyle(SpanStyle(color = Crimson)) { append("KA") }
+                withStyle(SpanStyle(color = Cream)) { append("LE") }
+                withStyle(SpanStyle(color = Crimson)) { append("AF") }
             },
             fontFamily = Anton,
             fontSize = 28.sp,
         )
         Text(
-            text = "CHITRA KATHA",
+            text = "COMIC READER",
             fontFamily = Archivo,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 8.5.sp,

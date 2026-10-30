@@ -323,25 +323,43 @@ fun MenuScreen(
             OchreBadge("VERSION $version")
             Spacer(Modifier.size(14.dp))
             Text(
-                "Made with ❤️ by Chakra",
+                "A comic reader for Android & iOS",
                 fontFamily = Archivo,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 color = Cream,
             )
-            Spacer(Modifier.size(18.dp))
+            Spacer(Modifier.size(14.dp))
             Text(
-                "Chika is a comic reader that detects panels on-device and guides you through each " +
-                    "page, panel by panel.",
+                "Leaf is an offline comic reader with on-device ML panel detection, interactive 3D page curl, network SMB drive support, and multi-format archives.",
                 fontFamily = Archivo,
                 fontWeight = FontWeight.Medium,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
                 color = Cream,
             )
+            Spacer(Modifier.size(14.dp))
+            Text(
+                "Forked with appreciation from Chika by Chakra.",
+                fontFamily = Archivo,
+                fontWeight = FontWeight.Medium,
+                fontSize = 12.sp,
+                color = CreamMuted,
+            )
+            Spacer(Modifier.size(6.dp))
+            Text(
+                "Upstream: github.com/batunii/chika",
+                fontFamily = Archivo,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 11.sp,
+                color = Ochre,
+                modifier = Modifier.clickable {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/batunii/chika")))
+                }.padding(top = 2.dp),
+            )
 
             Spacer(Modifier.size(18.dp))
-            LinkRow("Privacy policy — Chika collects no data.") {
+            LinkRow("Privacy policy — Leaf collects no data.") {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL)))
             }
             Spacer(Modifier.size(8.dp))
@@ -349,18 +367,18 @@ fun MenuScreen(
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(LICENSES_URL)))
             }
 
-            Spacer(Modifier.size(28.dp))
+            Spacer(Modifier.size(24.dp))
 
             // ---- Support -------------------------------------------------------------
             Text(
-                "Chika is free and made with care. If it brings you joy, you can support its making.",
+                "Support the upstream creator of Chika:",
                 fontFamily = Archivo,
                 fontWeight = FontWeight.Medium,
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
                 color = CreamMuted,
             )
-            Spacer(Modifier.size(14.dp))
+            Spacer(Modifier.size(12.dp))
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -375,7 +393,7 @@ fun MenuScreen(
                 Icon(Icons.Default.Favorite, contentDescription = null, tint = Cream, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(10.dp))
                 Text(
-                    "SUPPORT / DONATE",
+                    "SUPPORT ORIGINAL PROJECT",
                     fontFamily = Anton,
                     fontSize = 15.sp,
                     letterSpacing = 0.5.sp,
