@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -21,8 +22,18 @@ class LibraryViewModel(
     private val settings: AppSettings,
 ) : ViewModel() {
 
-    val comics: StateFlow<List<ComicEntity>> = repository.comics
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /** Search query for filtering comics in the library. */
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    val comics: StateFlow<List<ComicEntity>> = combine(repository.comics, _searchQuery) { list, query ->
+        if (query.isBlank()) {
+            list
+        } else {
+            val q = query.trim()
+            list.filter { it.title.contains(q, ignoreCase = true) }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Global default reading direction applied to newly imported comics. */
     private val _defaultRightToLeft = MutableStateFlow(settings.defaultRightToLeft)
@@ -105,6 +116,14 @@ class LibraryViewModel(
     fun setLibraryColumns(columns: Int) {
         settings.libraryColumns = columns
         _libraryColumns.value = columns
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = ""
     }
 
     fun consumeMessage() {

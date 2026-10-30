@@ -1,8 +1,14 @@
 package com.chakra.comicreader.ui.library
 
 import android.graphics.BitmapFactory
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -33,12 +39,17 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -54,20 +65,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -100,6 +119,7 @@ fun LibraryScreen(
     onOpenDrive: () -> Unit,
 ) {
     val comics by viewModel.comics.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val importing by viewModel.importing.collectAsStateWithLifecycle()
     val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
@@ -108,6 +128,23 @@ fun LibraryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<ComicEntity?>(null) }
     var showSourceDialog by remember { mutableStateOf(false) }
+
+    var isSearchOpen by rememberSaveable { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    var isSearchFocused by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = isSearchOpen) {
+        isSearchOpen = false
+        viewModel.clearSearch()
+        focusManager.clearFocus()
+    }
+
+    LaunchedEffect(isSearchOpen) {
+        if (isSearchOpen) {
+            focusRequester.requestFocus()
+        }
+    }
 
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp.dp
@@ -156,26 +193,137 @@ fun LibraryScreen(
             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Row(
+                Column(
                     Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top,
                 ) {
-                    ChikaWordmark()
-                    Box(
-                        Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Cream.copy(alpha = 0.10f))
-                            .clickable(onClick = onOpenMenu),
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            Icons.Default.Menu,
-                            contentDescription = "Menu",
-                            tint = Cream,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        ChikaWordmark()
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSearchOpen) Ochre else Cream.copy(alpha = 0.10f))
+                                    .clickable {
+                                        isSearchOpen = !isSearchOpen
+                                        if (!isSearchOpen) {
+                                            viewModel.clearSearch()
+                                            focusManager.clearFocus()
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = if (isSearchOpen) Ink else Cream,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                            Box(
+                                Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Cream.copy(alpha = 0.10f))
+                                    .clickable(onClick = onOpenMenu),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    Icons.Default.Menu,
+                                    contentDescription = "Menu",
+                                    tint = Cream,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isSearchOpen,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp, bottom = 4.dp)
+                                .comicShadow(offset = 3.dp, color = Color(0xB3000000))
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(InkSoft)
+                                .border(
+                                    width = 2.dp,
+                                    color = if (isSearchFocused) Ochre else Ink,
+                                    shape = RoundedCornerShape(6.dp),
+                                )
+                                .padding(horizontal = 12.dp, vertical = 9.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = if (isSearchFocused) Ochre else CreamMuted,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { viewModel.setSearchQuery(it) },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .focusRequester(focusRequester)
+                                        .onFocusChanged { isSearchFocused = it.isFocused },
+                                    singleLine = true,
+                                    textStyle = TextStyle(
+                                        fontFamily = Archivo,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 14.sp,
+                                        color = Cream,
+                                    ),
+                                    cursorBrush = SolidColor(Ochre),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                                    decorationBox = { innerTextField ->
+                                        if (searchQuery.isEmpty()) {
+                                            Text(
+                                                "SEARCH COMICS BY TITLE…",
+                                                fontFamily = Archivo,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 12.sp,
+                                                color = CreamMuted.copy(alpha = 0.55f),
+                                            )
+                                        }
+                                        innerTextField()
+                                    },
+                                )
+                                if (searchQuery.isNotEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(Cream.copy(alpha = 0.12f))
+                                            .clickable { viewModel.clearSearch() },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Clear search",
+                                            tint = Cream,
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -185,7 +333,11 @@ fun LibraryScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OchreBadge("YOUR LIBRARY")
+                    if (searchQuery.isNotBlank()) {
+                        OchreBadge("FOUND ${comics.size} ${if (comics.size == 1) "COMIC" else "COMICS"}")
+                    } else {
+                        OchreBadge("YOUR LIBRARY")
+                    }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -258,13 +410,51 @@ fun LibraryScreen(
             }
             if (comics.isEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Text(
-                        "No comics yet. Tap LOAD COMIC to add a CBZ, CBR, or PDF.",
-                        fontFamily = Archivo,
-                        fontSize = 13.sp,
-                        color = CreamMuted,
-                        modifier = Modifier.padding(vertical = 12.dp),
-                    )
+                    if (searchQuery.isNotBlank()) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 36.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                "NO MATCHES",
+                                fontFamily = Anton,
+                                fontSize = 22.sp,
+                                color = Cream,
+                            )
+                            Text(
+                                "No comics found matching \"$searchQuery\"",
+                                fontFamily = Archivo,
+                                fontSize = 13.sp,
+                                color = CreamMuted,
+                            )
+                            Box(
+                                Modifier
+                                    .padding(top = 6.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Ochre)
+                                    .clickable { viewModel.clearSearch() }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                            ) {
+                                Text(
+                                    "CLEAR SEARCH",
+                                    fontFamily = Anton,
+                                    fontSize = 12.sp,
+                                    color = Ink,
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            "No comics yet. Tap LOAD COMIC to add a CBZ, CBR, or PDF.",
+                            fontFamily = Archivo,
+                            fontSize = 13.sp,
+                            color = CreamMuted,
+                            modifier = Modifier.padding(vertical = 12.dp),
+                        )
+                    }
                 }
             }
             items(comics, key = { it.id }) { comic ->
@@ -275,13 +465,15 @@ fun LibraryScreen(
                     onLongClick = { pendingDelete = comic },
                 )
             }
-            item {
-                AddTile(
-                    importing = importing,
-                    progress = importProgress,
-                    columns = actualColumns,
-                    onClick = { if (!importing) showSourceDialog = true },
-                )
+            if (searchQuery.isBlank()) {
+                item {
+                    AddTile(
+                        importing = importing,
+                        progress = importProgress,
+                        columns = actualColumns,
+                        onClick = { if (!importing) showSourceDialog = true },
+                    )
+                }
             }
         }
 
