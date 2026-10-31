@@ -52,7 +52,7 @@ object PanelPipeline {
         if (planned.size >= 2) return pad(planned)
         // The model found nothing usable (or it collapsed to a single region): rather than show the
         // page as one panel, treat the whole page as a panel and let the ratio splitter break it up.
-        return pad(PanelPlanner.plan(listOf(Panel.FULL_PAGE), bubbles, pageW, pageH, rightToLeft, config))
+        return pad(PanelPlanner.plan(listOf(Panel.FULL_PAGE), bubbles, pageW, pageH, rightToLeft, config.copy(splitWidePanels = true)))
     }
 
     /** Grows each panel by [PANEL_MARGIN] of its own size per side, clamped to the page. */

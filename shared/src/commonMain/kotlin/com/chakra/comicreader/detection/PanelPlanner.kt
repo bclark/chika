@@ -55,6 +55,13 @@ object PanelPlanner {
         /** On a spread, a panel at least this wide (≈ one page-half) is "full width of its own page",
          *  so a big per-page panel on a wide spread is broken into more parts instead of left whole. */
         val spreadPageWidthFraction: Float = 0.42f,
+        /**
+         * Whether to mechanically divide wide/broad single-page panels into sub-pieces.
+         * Default false: comic artists intend wide horizontal panels to be viewed as a unified
+         * composition; slicing them in half cuts through characters and dialogue balloons.
+         * Spreads spanning two pages still divide across the physical page seam.
+         */
+        val splitWidePanels: Boolean = false,
     ) {
         companion object {
             /**
@@ -137,7 +144,9 @@ object PanelPlanner {
     private fun shouldDivide(p: Panel, pageAspect: Float, c: Config): Boolean {
         val spread = isSpread(pageAspect, c)
         if (spread && isCrossPage(p, c)) return true
-        if (isFullWidth(p, c, spread) && p.height >= c.minDivideHeightFraction) return true
+        if (spread && isFullWidth(p, c, true) && p.height >= c.minDivideHeightFraction) return true
+        if (!c.splitWidePanels) return false
+        if (isFullWidth(p, c, false) && p.height >= c.minDivideHeightFraction) return true
         return isBig(p, c) && !isSquare(p, pageAspect, c)
     }
 

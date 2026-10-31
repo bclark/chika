@@ -13,7 +13,8 @@ class PanelPlannerTest {
         panels: List<Panel>,
         bubbles: List<Panel> = emptyList(),
         rightToLeft: Boolean = false,
-    ) = PanelPlanner.plan(panels, bubbles, pageW, pageH, rightToLeft)
+        config: PanelPlanner.Config = PanelPlanner.Config(),
+    ) = PanelPlanner.plan(panels, bubbles, pageW, pageH, rightToLeft, config)
 
     @Test
     fun emptyInputPassesThrough() {
@@ -60,11 +61,17 @@ class PanelPlannerTest {
     }
 
     @Test
-    fun bigWidePanelIsDividedWithVerticalCut() {
-        // Area 0.5, pixel aspect (0.9/0.55)*(1000/1500) ≈ 1.09... make it clearly wide:
-        // width 0.95, height 0.4 → area 0.38 > 0.35; aspect (0.95/0.4)*(2/3) ≈ 1.58 > 1.25.
+    fun widePanelIsKeptIntactByDefault() {
+        // Area 0.38, width 0.95: by default, wide single-page panels are kept whole
         val wide = Panel(0.0f, 0.0f, 0.95f, 0.4f)
         val result = plan(listOf(wide))
+        assertEquals(listOf(wide), result, "Wide panels must be preserved intact by default")
+    }
+
+    @Test
+    fun bigWidePanelIsDividedWithVerticalCutWhenEnabled() {
+        val wide = Panel(0.0f, 0.0f, 0.95f, 0.4f)
+        val result = plan(listOf(wide), config = PanelPlanner.Config(splitWidePanels = true))
         assertEquals(2, result.size)
         val (first, second) = result
         assertEquals(wide.left, first.left)
@@ -77,7 +84,7 @@ class PanelPlannerTest {
     @Test
     fun rightToLeftDivisionEmitsRightPieceFirst() {
         val wide = Panel(0.0f, 0.0f, 0.95f, 0.4f)
-        val result = plan(listOf(wide), rightToLeft = true)
+        val result = plan(listOf(wide), rightToLeft = true, config = PanelPlanner.Config(splitWidePanels = true))
         assertEquals(2, result.size)
         assertTrue(result[0].left > result[1].left)
     }
@@ -97,7 +104,7 @@ class PanelPlannerTest {
             Panel(0.05f, 0.1f, 0.30f, 0.3f),
             Panel(0.65f, 0.1f, 0.90f, 0.3f),
         )
-        val result = plan(listOf(wide), bubbles = bubbles)
+        val result = plan(listOf(wide), bubbles = bubbles, config = PanelPlanner.Config(splitWidePanels = true))
         assertEquals(2, result.size)
         val cut = result[0].right
         assertEquals(0.475f, cut, absoluteTolerance = 0.01f)
@@ -108,10 +115,10 @@ class PanelPlannerTest {
     }
 
     @Test
-    fun fullWidthBroadPanelSplitsIntoFour() {
+    fun fullWidthBroadPanelSplitsIntoFourWhenEnabled() {
         // Full width (0.96) AND broad/tall (0.75) → 2×2 grid, read TL, TR, BL, BR.
         val p = Panel(0.0f, 0.10f, 0.96f, 0.85f)
-        val r = plan(listOf(p))
+        val r = plan(listOf(p), config = PanelPlanner.Config(splitWidePanels = true))
         assertEquals(4, r.size)
         // corners
         assertEquals(p.left, r[0].left); assertEquals(p.top, r[0].top)      // TL
@@ -125,10 +132,10 @@ class PanelPlannerTest {
     }
 
     @Test
-    fun fullWidthShortPanelStillSplitsIntoTwo() {
+    fun fullWidthShortPanelStillSplitsIntoTwoWhenEnabled() {
         // Full width (0.95) but short (0.30, not broad) → 2 side-by-side.
         val p = Panel(0.0f, 0.0f, 0.95f, 0.30f)
-        val r = plan(listOf(p))
+        val r = plan(listOf(p), config = PanelPlanner.Config(splitWidePanels = true))
         assertEquals(2, r.size)
         assertEquals(r[0].right, r[1].left)
     }

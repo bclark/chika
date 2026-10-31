@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -39,6 +40,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.CircularProgressIndicator
@@ -97,6 +100,7 @@ import com.chakra.comicreader.ui.theme.Anton
 import com.chakra.comicreader.ui.theme.Archivo
 import com.chakra.comicreader.ui.theme.Cream
 import com.chakra.comicreader.ui.theme.CreamMuted
+import com.chakra.comicreader.ui.theme.PaperWhite
 import com.chakra.comicreader.ui.theme.Crimson
 import com.chakra.comicreader.ui.theme.DeepInk
 import com.chakra.comicreader.ui.theme.DeepInkSurface
@@ -120,6 +124,7 @@ private val PanelConverter = TwoWayConverter<Panel, AnimationVector4D>(
 fun ReaderScreen(
     viewModel: ReaderViewModel,
     pageSlideEnabled: Boolean,
+    onTogglePageSlideEnabled: () -> Unit = {},
     onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -239,6 +244,7 @@ fun ReaderScreen(
                 pageIndex = state.pageIndex,
                 pageCount = state.pageCount,
                 pageSlideEnabled = pageSlideEnabled,
+                onTogglePageSlideEnabled = onTogglePageSlideEnabled,
                 onJumpToPage = viewModel::jumpToPage,
             )
         }
@@ -250,6 +256,7 @@ private fun PageScrubber(
     pageIndex: Int,
     pageCount: Int,
     pageSlideEnabled: Boolean,
+    onTogglePageSlideEnabled: () -> Unit,
     onJumpToPage: (Int) -> Unit,
 ) {
     var scrubbing by remember { mutableStateOf(false) }
@@ -269,13 +276,31 @@ private fun PageScrubber(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                if (pageSlideEnabled) "PAGE FLIP" else "PANEL BY PANEL",
-                fontFamily = Anton,
-                fontSize = 12.sp,
-                letterSpacing = 2.sp,
-                color = CreamMuted,
-            )
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = LeafPrimary.copy(alpha = 0.9f),
+                modifier = Modifier.clickable { onTogglePageSlideEnabled() },
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                ) {
+                    Icon(
+                        imageVector = if (pageSlideEnabled) Icons.AutoMirrored.Filled.MenuBook else Icons.Default.CropFree,
+                        contentDescription = "Switch reading mode",
+                        tint = LeafAccent,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        if (pageSlideEnabled) "PAGE FLIP" else "PANEL BY PANEL",
+                        fontFamily = Anton,
+                        fontSize = 11.sp,
+                        letterSpacing = 1.sp,
+                        color = PaperWhite,
+                    )
+                }
+            }
             PageCoin(page = shownPage, total = pageCount)
         }
         Slider(

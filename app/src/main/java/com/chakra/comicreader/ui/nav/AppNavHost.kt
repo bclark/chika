@@ -75,6 +75,7 @@ fun AppNavHost() {
             ReaderScreen(
                 viewModel = vm,
                 pageSlideEnabled = pageSlide,
+                onTogglePageSlideEnabled = { app.setPageSlideEnabled(!pageSlide) },
                 onBack = { navController.popBackStack() },
             )
         }
