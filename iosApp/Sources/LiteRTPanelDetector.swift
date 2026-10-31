@@ -67,9 +67,14 @@ final class LiteRTPanelDetector {
                 let ordered = PanelOrdering.shared.order(panels: result.panels, rightToLeft: rightToLeft)
                 return ordered.count < 2 ? [Panel.companion.FULL_PAGE] : ordered
             }
+            let gray = downsampledGrayscale(cg, maxDim: 640)
+            let kGray = KotlinByteArray(size: Int32(gray.data.count))
+            for (i, v) in gray.data.enumerated() { kGray.set(index: Int32(i), value: Int8(bitPattern: v)) }
+
             let planned = PanelPipeline.shared.zoomRegions(
                 panels: result.panels, bubbles: result.bubbles,
-                pageW: result.pageW, pageH: result.pageH, rightToLeft: rightToLeft
+                pageW: result.pageW, pageH: result.pageH, rightToLeft: rightToLeft,
+                gray: kGray, gw: Int32(gray.width), gh: Int32(gray.height)
             )
             return planned.count < 2 ? [Panel.companion.FULL_PAGE] : planned
         } catch {
@@ -123,6 +128,25 @@ final class LiteRTPanelDetector {
             px += 4
         }
         return floats
+    }
+
+    /// Downsamples the page to a grayscale buffer for gutter snapping and split refinement.
+    private func downsampledGrayscale(_ cg: CGImage, maxDim: Int = 640) -> (data: [UInt8], width: Int, height: Int) {
+        let longEdge = max(cg.width, cg.height)
+        let scale = longEdge > maxDim ? Double(maxDim) / Double(longEdge) : 1.0
+        let w = max(1, Int(Double(cg.width) * scale))
+        let h = max(1, Int(Double(cg.height) * scale))
+        var buf = [UInt8](repeating: 0, count: w * h)
+        _ = buf.withUnsafeMutableBytes { raw in
+            guard let ctx = CGContext(
+                data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
+                space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue
+            ) else { return false }
+            ctx.interpolationQuality = .low
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return true
+        }
+        return (buf, w, h)
     }
 }
 

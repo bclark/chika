@@ -22,13 +22,31 @@ object PanelPipeline {
         pageW: Int,
         pageH: Int,
         rightToLeft: Boolean,
+    ): List<Panel> = zoomRegions(panels, bubbles, pageW, pageH, rightToLeft, null, 0, 0)
+
+    fun zoomRegions(
+        panels: List<Panel>,
+        bubbles: List<Panel>,
+        pageW: Int,
+        pageH: Int,
+        rightToLeft: Boolean,
+        gray: ByteArray?,
+        gw: Int,
+        gh: Int,
     ): List<Panel> {
+        // Refine detected panels using pixel-level gutter analysis (splitting merged boxes & snapping edges)
+        val refined = if (gray != null && gw > 16 && gh > 16 && panels.isNotEmpty()) {
+            GutterRefiner(gray, gw, gh).refine(panels)
+        } else {
+            panels
+        }
+
         // Add any large, roughly-rectangular region the model left uncovered as a panel, so missed
         // panels get numbered too — then order and plan as usual.
         // Manga (read right-to-left) is paced panel-by-panel, so it uses a profile that merges far
         // less aggressively; Western LTR comics keep the default grid-friendly merging.
         val config = if (rightToLeft) PanelPlanner.Config.MANGA else PanelPlanner.Config()
-        val filled = PanelGapFiller.fill(panels)
+        val filled = PanelGapFiller.fill(refined)
         val ordered = PanelOrdering.order(filled, rightToLeft)
         val planned = PanelPlanner.plan(ordered, bubbles, pageW, pageH, rightToLeft, config)
         if (planned.size >= 2) return pad(planned)

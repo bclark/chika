@@ -53,12 +53,35 @@ class MlPanelDetector private constructor(
             Log.e(TAG, "Inference failed; falling back to full page", t)
             DetectResult(emptyList(), emptyList(), page.width, page.height)
         }
-        // Single shared post-processing path (gap-fill → order → merge/divide), same as iOS.
+        val (gray, dims) = buildGrayscale(page)
+        // Single shared post-processing path (gutter-refine → gap-fill → order → merge/divide), same as iOS.
         val planned = PanelPipeline.zoomRegions(
             result.panels, result.bubbles, result.pageW, result.pageH, rightToLeft,
+            gray, dims.first, dims.second,
         )
         Log.i(TAG, "panels=${result.panels.size} bubbles=${result.bubbles.size} planned=${planned.size}")
         if (planned.size < 2) listOf(Panel.FULL_PAGE) else planned
+    }
+
+    /** Extracts a downsampled grayscale buffer for gutter snapping and split refinement. */
+    private fun buildGrayscale(page: Bitmap, maxDim: Int = 640): Pair<ByteArray, Pair<Int, Int>> {
+        val scale = minOf(1f, maxDim.toFloat() / maxOf(page.width, page.height))
+        val gw = (page.width * scale).toInt().coerceAtLeast(1)
+        val gh = (page.height * scale).toInt().coerceAtLeast(1)
+        val scaled = if (scale < 1f) Bitmap.createScaledBitmap(page, gw, gh, true) else page
+        val pixels = IntArray(gw * gh)
+        scaled.getPixels(pixels, 0, gw, 0, 0, gw, gh)
+        if (scaled != page) scaled.recycle()
+
+        val gray = ByteArray(gw * gh)
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            val r = (p shr 16) and 0xFF
+            val g = (p shr 8) and 0xFF
+            val b = p and 0xFF
+            gray[i] = ((r * 77 + g * 150 + b * 29) shr 8).toByte()
+        }
+        return gray to (gw to gh)
     }
 
     /** ML detections for one page, normalized to [0,1]; page dimensions are in pixels. */
