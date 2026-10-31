@@ -59,7 +59,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: chika-debug-apk
+          name: leaf-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 

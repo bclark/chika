@@ -5,7 +5,7 @@ import SwiftUI
 /// pixels switch fully off, while the brand accents (crimson/ochre/cream) carry through unchanged
 /// (matching Android's ChikaAmoledColorScheme).
 final class ChikaSettings: ObservableObject {
-    private static let amoledKey = "chika.amoledTheme"
+    private static let amoledKey = "leaf.amoledTheme"
     private let defaults = UserDefaults.standard
 
     @Published var amoled: Bool {
