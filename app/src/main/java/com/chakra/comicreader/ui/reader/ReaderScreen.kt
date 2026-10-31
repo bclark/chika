@@ -43,7 +43,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -226,9 +225,6 @@ fun ReaderScreen(
                         fontSize = 9.sp, letterSpacing = 1.4.sp, color = CreamMuted,
                         modifier = Modifier.padding(top = 2.dp),
                     )
-                }
-                IconButton(onClick = viewModel::showFullPage) {
-                    Icon(Icons.Default.ZoomOutMap, contentDescription = "Show whole page", tint = Cream)
                 }
                 DirectionChip(rightToLeft = state.rightToLeft, onClick = viewModel::toggleReadingDirection)
             }
