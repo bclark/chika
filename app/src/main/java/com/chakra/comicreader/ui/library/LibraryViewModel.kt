@@ -130,9 +130,12 @@ class LibraryViewModel(
             var failedCount = 0
             val total = entries.size
             entries.forEachIndexed { index, entry ->
-                _importStatus.value = if (total > 1) "Importing ${index + 1} of $total: ${entry.name}" else "Importing ${entry.name}…"
-                val result = repository.importSmbComic(entry) { fileProgress ->
-                    _importProgress.value = (index + fileProgress) / total
+                val baseStatus = if (total > 1) "Importing ${index + 1} of $total: ${entry.name}" else "Importing ${entry.name}"
+                _importStatus.value = "$baseStatus…"
+                val result = repository.importSmbComic(entry) { transfer ->
+                    _importProgress.value = (index + transfer.fraction) / total
+                    val speedText = formatSpeed(transfer.bytesPerSec)
+                    _importStatus.value = if (speedText.isNotEmpty()) "$baseStatus ($speedText)" else "$baseStatus…"
                 }
                 if (result.isSuccess) {
                     importedCount++
@@ -182,6 +185,13 @@ class LibraryViewModel(
 
     fun consumeMessage() {
         _message.value = null
+    }
+
+    private fun formatSpeed(bytesPerSec: Long): String = when {
+        bytesPerSec <= 0L -> ""
+        bytesPerSec >= 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f MB/s", bytesPerSec / (1024f * 1024f))
+        bytesPerSec >= 1024 -> String.format(java.util.Locale.US, "%.0f KB/s", bytesPerSec / 1024f)
+        else -> "$bytesPerSec B/s"
     }
 
     companion object {

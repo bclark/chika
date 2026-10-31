@@ -16,6 +16,7 @@ import com.chakra.comicreader.data.db.ComicEntity
 import com.chakra.comicreader.data.settings.AppSettings
 import com.chakra.comicreader.data.smb.SmbClient
 import com.chakra.comicreader.data.smb.SmbEntry
+import com.chakra.comicreader.data.smb.SmbTransferProgress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -103,7 +104,7 @@ class LibraryRepository(
 
     suspend fun importSmbComic(
         entry: SmbEntry,
-        onProgress: (Float) -> Unit = {},
+        onProgress: (SmbTransferProgress) -> Unit = {},
     ): Result<Long> = withContext(Dispatchers.IO) {
         val token = UUID.randomUUID().toString()
         val comicsDir = File(context.filesDir, "comics").apply { mkdirs() }
