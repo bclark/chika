@@ -37,3 +37,6 @@ training/*.npy
 # Sample comic archives used for local testing (never tracked)
 *.cbr
 *.cbz
+
+# Model training documentation / roadmap (Option A)
+MODEL_TRAINING_GUIDE.md
