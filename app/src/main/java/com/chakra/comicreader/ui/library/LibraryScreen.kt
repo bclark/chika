@@ -47,6 +47,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Menu
@@ -124,6 +125,15 @@ import com.chakra.comicreader.ui.theme.PaperWhiteMuted
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
+
+private fun formatFileSize(bytes: Long): String = when {
+    bytes <= 0L -> ""
+    bytes >= 1024L * 1024L * 1024L -> String.format(Locale.US, "%.1f GB", bytes / (1024f * 1024f * 1024f))
+    bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024f * 1024f))
+    bytes >= 1024L -> String.format(Locale.US, "%.0f KB", bytes / 1024f)
+    else -> "$bytes B"
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -624,6 +634,11 @@ private fun ComicCard(
     val shadowOffset = if (columns >= 4) 3.dp else 5.dp
     val progressHeight = if (columns >= 4) 5.dp else 7.dp
 
+    val fileSize = remember(comic.filePath) {
+        runCatching { File(comic.filePath).length() }.getOrDefault(0L)
+    }
+    val sizeText = formatFileSize(fileSize)
+
     Column(Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Box(
             Modifier
@@ -640,6 +655,38 @@ private fun ComicCard(
             } else {
                 GeneratedCover(comic.title, columns = columns)
             }
+
+            if (comic.source == "smb") {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(if (columns >= 4) 4.dp else 6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(DeepInk.copy(alpha = 0.88f))
+                        .border(1.dp, LeafAccent, RoundedCornerShape(3.dp))
+                        .padding(horizontal = if (columns >= 4) 4.dp else 5.dp, vertical = 2.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Cloud,
+                            contentDescription = "From SMB Drive",
+                            tint = LeafAccent,
+                            modifier = Modifier.size(if (columns >= 4) 9.dp else 11.dp),
+                        )
+                        Text(
+                            text = "SMB",
+                            fontFamily = Anton,
+                            fontSize = if (columns >= 4) 8.sp else 9.5.sp,
+                            color = PaperWhite,
+                            letterSpacing = 0.5.sp,
+                        )
+                    }
+                }
+            }
+
             Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(progressHeight).background(Ink)) {
                 Box(Modifier.fillMaxWidth(pct).fillMaxHeight().background(Ochre))
             }
@@ -655,8 +702,8 @@ private fun ComicCard(
             modifier = Modifier.padding(top = if (columns >= 4) 6.dp else 9.dp),
         )
         Text(
-            if (started) "${(pct * 100).toInt()}% · pg ${comic.lastPage + 1}/${comic.pageCount}"
-            else "${comic.pageCount} pages",
+            if (started) "${(pct * 100).toInt()}% · pg ${comic.lastPage + 1}/${comic.pageCount}${if (sizeText.isNotEmpty()) " · $sizeText" else ""}"
+            else "${comic.pageCount} pages${if (sizeText.isNotEmpty()) " · $sizeText" else ""}",
             fontFamily = Archivo,
             fontWeight = FontWeight.SemiBold,
             fontSize = if (columns >= 4) 8.5.sp else 9.5.sp,
@@ -919,6 +966,7 @@ fun SmbDriveScreen(
                                 SmbRow(
                                     name = entry.name,
                                     isDirectory = entry.isDirectory,
+                                    sizeBytes = entry.sizeBytes,
                                     isSelected = isSelected,
                                     onClick = {
                                         if (entry.isDirectory) {
@@ -943,6 +991,11 @@ fun SmbDriveScreen(
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically(),
                 ) {
+                    val selectedTotalBytes = remember(selectedPaths, fileEntries) {
+                        fileEntries.filter { it.path in selectedPaths }.sumOf { it.sizeBytes }
+                    }
+                    val totalSizeSuffix = if (selectedTotalBytes > 0L) " · ${formatFileSize(selectedTotalBytes)}" else ""
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -960,7 +1013,7 @@ fun SmbDriveScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "$selectedCount ${if (selectedCount == 1) "COMIC" else "COMICS"} SELECTED",
+                                    text = "$selectedCount ${if (selectedCount == 1) "COMIC" else "COMICS"} SELECTED$totalSizeSuffix",
                                     fontFamily = Anton,
                                     fontSize = 15.sp,
                                     color = PaperWhite,
@@ -1087,6 +1140,7 @@ private fun AddTile(
 private fun SmbRow(
     name: String,
     isDirectory: Boolean,
+    sizeBytes: Long = 0L,
     isSelected: Boolean = false,
     onClick: () -> Unit,
 ) {
@@ -1124,6 +1178,15 @@ private fun SmbRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        if (!isDirectory && sizeBytes > 0L) {
+            Text(
+                formatFileSize(sizeBytes),
+                fontFamily = Archivo,
+                fontWeight = FontWeight.Medium,
+                fontSize = 11.5.sp,
+                color = PaperWhiteMuted,
+            )
+        }
         if (isDirectory) {
             Icon(
                 Icons.AutoMirrored.Filled.ArrowBack,

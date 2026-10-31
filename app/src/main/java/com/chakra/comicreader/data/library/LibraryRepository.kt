@@ -115,7 +115,7 @@ class LibraryRepository(
 
         try {
             SmbClient.downloadToFile(settings, entry, dest, onProgress)
-            indexCopiedFile(dest, coversDir, token, title)
+            indexCopiedFile(dest, coversDir, token, title, source = "smb")
         } catch (t: Throwable) {
             Log.e(TAG, "SMB import failed", t)
             dest.delete()
@@ -128,6 +128,7 @@ class LibraryRepository(
         coversDir: File,
         token: String,
         title: String,
+        source: String = "local",
     ): Result<Long> {
         val format = ComicArchiveFactory.detectFormat(dest)
         if (format == ComicFormat.UNKNOWN) {
@@ -164,6 +165,7 @@ class LibraryRepository(
                 rightToLeft = settings.defaultRightToLeft,
                 dateAdded = now,
                 lastOpened = now,
+                source = source,
             ),
         )
         return Result.success(id)
