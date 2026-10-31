@@ -3,12 +3,13 @@
 </p>
 
 <p align="center">
-  <strong>Leaf</strong> is an immersive, panel-by-panel comic reader for Android built with Kotlin Multiplatform and Jetpack Compose.
+  <strong>Leaf</strong> is an immersive, offline comic and manga reader for Android and iOS built with Kotlin Multiplatform and Jetpack Compose.
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg" alt="License: MPL 2.0"></a>
   <img src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84.svg" alt="Android 8.0+">
+  <img src="https://img.shields.io/badge/platform-iOS%2017.0%2B-000000.svg" alt="iOS 17.0+">
   <img src="https://img.shields.io/badge/architecture-Kotlin%20Multiplatform-7F52FF.svg" alt="Kotlin Multiplatform">
 </p>
 
@@ -28,29 +29,34 @@
 
 ## What makes Leaf special
 
-Tapping through a comic in Leaf steps you **smoothly from panel to panel** in reading order — page &rarr; panel 1 &rarr; panel 2 &rarr; &hellip; &rarr; zoom out &rarr; next page — making reading comfortable on phones, foldables, and tablets without tedious manual pinch-zooming.
+Leaf lets you read comics your way: choose between **guided panel-by-panel reading** powered by on-device ML, or traditional **full-page flip transitions**.
 
 ### Key Features
 
+- **Dual Reading Modes (Quick Settings Switch):**
+  - **Panel by Panel:** Steps smoothly from panel to panel in reading order with camera zoom transitions — making reading comfortable on phones without tedious manual pinch-zooming.
+  - **Page Flip:** Smooth horizontal full-page slide transition for traditional graphic novel reading and wide splash pages.
 - **On-Device ML Panel Detection:** Powered by an on-device YOLO TFLite model trained on Manga109-s; discovers panels and speech bubbles completely offline with zero latency or cloud dependencies.
+- **Manga (RTL) & Western (LTR) Direction:** First-class support for Right-to-Left Japanese manga and Left-to-Right Western comics, with automatic detection, per-book memory, and specialized manga planning algorithms.
 - **Smart Merge & Split Planner:** Merges tiny adjacent panels for readability and splits wide multi-character spreads with speech-bubble-aware cuts.
 - **Interactive 3D Page Curl:** Realistic gesture-driven page curl transition with authentic cylinder deformation, specular highlights, back-page rendering, and shadow depth.
 - **Comprehensive Format Support:**
   - **CBZ** (ZIP archives)
   - **CBR** (RAR4 and RAR5 via 7-Zip-JBinding)
   - **PDF** (Native vector and raster page rendering)
-- **SMB Network Drive Streaming:** Connect to local Samba / SMB network shares, browse remote directories, and stream or download comics directly.
+- **SMB Network Drive Streaming:** Connect to local Samba / SMB network shares over your home Wi-Fi, browse remote directories, and stream or download comics directly.
 - **Multi-Select & Batch Import:** Import single comics, multi-select specific titles, or "Select All" to bulk-import whole folders from device storage or remote SMB shares.
 - **Adaptive Grid Density:** Seamless column toggling (2, 3, 4, or 6 columns) tailor-made for foldable devices (like Samsung Galaxy Z Fold) and Android tablets.
 - **Instant Library Search:** Real-time title search and filtering across your entire comic library.
-- **Immersive Full-Screen Reader:** Reader chrome is hidden by default when opening a comic for instant immersion; tap anywhere to reveal scrubbers, reading direction toggles, and panel controls.
 - **Reading Progress Sync:** Automatically saves and resumes your exact page **and** panel position per comic.
+- **AMOLED True-Black Theme:** High-contrast true-black mode for OLED screens and battery savings.
+- **Privacy & 100% Offline Core:** Declares no external cloud dependencies, zero analytics, zero telemetry, and zero ads. The `INTERNET` permission is used strictly for connecting to your local LAN Samba (SMB) shares.
 
 ---
 
 ## Architecture
 
-Platform-independent logic is organized in `:shared`, a Kotlin Multiplatform module (JVM & iOS targets) consumed by the `:app` Android frontend:
+Platform-independent logic is organized in `:shared`, a Kotlin Multiplatform module (JVM & iOS targets) consumed by the `:app` Android frontend and the `iosApp` SwiftUI frontend:
 
 ```
 :shared (commonMain — pure Kotlin, unit-tested)
@@ -64,17 +70,20 @@ Platform-independent logic is organized in `:shared`, a Kotlin Multiplatform mod
   data/library   LibraryRepository · multi-select import · Room database persistence
   data/page      PageLoader · downsampled bitmap decoding · LRU memory cache
   detection      MlPanelDetector · TFLite inference · whole-page fallback
-  ui/brand       Component kit (wordmark, halftone patterns, starbursts, page coins)
+  ui/brand       Component kit (wordmark, halftone patterns, gold leaf emblem, dog-eared bookmark badges)
   ui/library     LibraryScreen & LibraryViewModel (grid density, real-time search, batch import)
-  ui/reader      ReaderScreen & ReaderViewModel (3D page curl, panel camera, gestures)
-  ui/theme       Pulp-comic palette (Ink, Crimson, Cream, Ochre) + Anton/Archivo type
+  ui/reader      ReaderScreen & ReaderViewModel (3D page curl, panel camera, gestures, page slide)
+  ui/theme       Leaf brand palette (Forest Green, Sage, Gold Accent, Deep Ink, Paper White) + Anton/Archivo type
+
+iosApp (Native iOS SwiftUI)
+  Sources/       SwiftUI views (ReaderView, LibraryView, MenuView) backed by ChikaShared framework
 ```
 
 **Technology Stack:**
-- **Language:** Kotlin 2.0+ (Kotlin Multiplatform)
-- **UI:** Jetpack Compose with Material 3
+- **Language:** Kotlin 2.0+ (Kotlin Multiplatform) & Swift
+- **UI:** Jetpack Compose with Material 3 (Android) & SwiftUI (iOS)
 - **Local Database:** AndroidX Room
-- **Machine Learning:** TensorFlow Lite (YOLO26n Manga109-s model)
+- **Machine Learning:** TensorFlow Lite / LiteRT (YOLO26n Manga109-s model)
 - **Archive Decoding:** Apache Commons Compress, 7-Zip-JBinding-4Android, Android PdfRenderer
 - **Network File Sharing:** SMBJ for Samba / SMB 2 & 3 protocol support
 

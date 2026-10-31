@@ -270,7 +270,7 @@ private fun PageScrubber(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                if (pageSlideEnabled) "PAGE SLIDE" else "SWIPE TO TURN",
+                if (pageSlideEnabled) "PAGE FLIP" else "PANEL BY PANEL",
                 fontFamily = Anton,
                 fontSize = 12.sp,
                 letterSpacing = 2.sp,

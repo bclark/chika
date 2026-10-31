@@ -21,7 +21,7 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_AMOLED, false)
         set(value) { prefs.edit().putBoolean(KEY_AMOLED, value).apply() }
 
-    /** When true, horizontal drag slides adjacent pages side-by-side instead of classic swipe-to-turn. */
+    /** When true, reading mode is Page Flip (full page slide); when false, Panel by Panel (guided reading). */
     var pageSlideEnabled: Boolean
         get() = prefs.getBoolean(KEY_PAGE_SLIDE, true)
         set(value) { prefs.edit().putBoolean(KEY_PAGE_SLIDE, value).apply() }

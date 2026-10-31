@@ -161,12 +161,76 @@ fun MenuScreen(
             // ---- Reading -------------------------------------------------------------
             SectionLabel("READING")
             Spacer(Modifier.size(10.dp))
-            ToggleRow(
-                title = "Page Slide Transition",
-                subtitle = "Slide adjacent pages side-by-side with your finger (disables classic swipe-to-turn).",
-                checked = pageSlideEnabled,
-                onCheckedChange = onSetPageSlideEnabled,
-            )
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(InkSoft)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    "Reading Mode",
+                    fontFamily = Archivo,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Cream,
+                )
+                Text(
+                    if (pageSlideEnabled) {
+                        "Turn full pages with a smooth slide transition."
+                    } else {
+                        "Guided reading that automatically zooms and steps through each detected panel."
+                    },
+                    fontFamily = Archivo,
+                    fontSize = 12.sp,
+                    color = CreamMuted,
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Ink)
+                        .padding(2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(if (pageSlideEnabled) Ochre else Color.Transparent)
+                            .clickable { onSetPageSlideEnabled(true) }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "PAGE FLIP",
+                            fontFamily = Archivo,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = if (pageSlideEnabled) Ink else CreamMuted,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(if (!pageSlideEnabled) Ochre else Color.Transparent)
+                            .clickable { onSetPageSlideEnabled(false) }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "PANEL BY PANEL",
+                            fontFamily = Archivo,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = if (!pageSlideEnabled) Ink else CreamMuted,
+                        )
+                    }
+                }
+            }
 
             Spacer(Modifier.size(32.dp))
 
